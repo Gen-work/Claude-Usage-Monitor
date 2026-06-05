@@ -62,6 +62,23 @@
     const lo = Math.round(hi * 0.5);
     return S.remainPct > hi ? F.colorHi : S.remainPct > lo ? F.colorMid : F.colorLo;
   }
+  function updateBloomKeyframes() {
+    const color = usageColor();
+    let bloomStyle = document.getElementById('cum-ext-bloom-dynamic');
+    if (!bloomStyle) {
+      bloomStyle = document.createElement('style');
+      bloomStyle.id = 'cum-ext-bloom-dynamic';
+      document.head.appendChild(bloomStyle);
+    }
+    bloomStyle.textContent = `
+      @keyframes cum-ext-bloom {
+        0%{filter:drop-shadow(0 0 0px transparent)}
+        25%{filter:drop-shadow(0 0 24px ${color}99)}
+        60%{filter:drop-shadow(0 0 14px ${color}44)}
+        100%{filter:drop-shadow(0 0 0px transparent)}
+      }
+    `;
+  }
 
   // ── Styles ────────────────────────────────────────────────────────────────
   function injectStyles() {
@@ -333,13 +350,14 @@
     CW.forEach((idx, pos) => {
       floatPaths[idx].style.fill = pos < n ? col : EMPTY_PETAL;
     });
+    updateBloomKeyframes();
   }
 
   // ── Reset countdown effects ───────────────────────────────────────────────
   function checkResetEffects() {
     if (!floatEl || !S.loaded || !F.allPages) return;
     const now = Date.now();
-    const ms = (S.session && S.session.resetMs) || S.resetMs || 0;
+    const ms = S.session?.resetMs ?? S.resetMs ?? 0;
     if (ms <= 0 || ms <= now) {
       floatEl.classList.remove('cum-ext-warn', 'cum-ext-blink');
       return;
@@ -368,7 +386,7 @@
   function showTooltip() {
     if (!floatEl || !floatTipEl) return;
     const r = floatEl.getBoundingClientRect();
-    const ms = (S.session && S.session.resetMs) || S.resetMs || 0;
+    const ms = S.session?.resetMs ?? S.resetMs ?? 0;
     const tipColor = usageColor();
     let resetText = '';
     if (ms > 0) {
@@ -695,6 +713,7 @@
 
             applyVisibility();
             if (res.usageData) applyData(res.usageData);
+            updateBloomKeyframes();
 
             setupStorageListener();
             requestAnimationFrame(tick);
