@@ -135,7 +135,7 @@ function showUsage(data) {
       ? 'linear-gradient(90deg,#c96442,#d97757)'
       : 'linear-gradient(90deg,#e05252,#ff8a65)';
 
-  const ms  = (data.session && data.session.resetMs) || data.resetMs || 0;
+  const ms = data.session?.resetMs ?? data.resetMs ?? 0;
   const now = Date.now();
   if (ms > 0 && ms > now) {
     const diff = ms - now;

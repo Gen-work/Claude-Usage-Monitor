@@ -324,7 +324,7 @@
   function showTooltip() {
     if (!floatEl) return;
     const r = floatEl.getBoundingClientRect();
-    const ms  = (S.session && S.session.resetMs) || S.resetMs || 0;
+    const ms = S.session?.resetMs ?? S.resetMs ?? 0;
     const tipColor = usageColor();
     let resetText = '—';
     if (ms > 0) {
@@ -671,10 +671,11 @@
   }
 
   function drawFloat() {
-    if (F.zen || !F.enabled || !floatPaths.length) return;
+    if (F.zen || !F.enabled || !floatPaths.length || !S.loaded) return;
+    const col = usageColor();
     const n = Math.round(S.remainPct / 100 * 12);
     CW.forEach((idx, pos) => {
-      floatPaths[idx].style.fill = pos < n ? F.colorHi : EMPTY_PETAL;
+      floatPaths[idx].style.fill = pos < n ? col : EMPTY_PETAL;
     });
   }
 
@@ -737,20 +738,36 @@
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  //  FINDERS
+  //  FINDERS — cached to avoid querySelector on every RAF frame / mouse event
   // ═════════════════════════════════════════════════════════════════════════
-  function findInput()    { return document.querySelector('[data-testid="chat-input"]'); }
-  function findModelBtn() { return document.querySelector('[data-testid="model-selector-dropdown"]'); }
-  function findSendBtn()  { return document.querySelector('button[aria-label="Send message"]'); }
+  const _q = { input: null, sendBtn: null, modelBtn: null, container: null };
+
+  function invalidateQueryCache() {
+    _q.input = _q.sendBtn = _q.modelBtn = _q.container = null;
+  }
+
+  function findInput() {
+    if (_q.input && document.contains(_q.input)) return _q.input;
+    return (_q.input = document.querySelector('[data-testid="chat-input"]'));
+  }
+  function findModelBtn() {
+    if (_q.modelBtn && document.contains(_q.modelBtn)) return _q.modelBtn;
+    return (_q.modelBtn = document.querySelector('[data-testid="model-selector-dropdown"]'));
+  }
+  function findSendBtn() {
+    if (_q.sendBtn && document.contains(_q.sendBtn)) return _q.sendBtn;
+    return (_q.sendBtn = document.querySelector('button[aria-label="Send message"]'));
+  }
 
   function findContainer(input) {
+    if (_q.container && _q.input === input && document.contains(_q.container)) return _q.container;
     let el = input.parentElement;
     for (let i = 0; i < 14; i++) {
       if (!el) break;
-      if ((el.className || '').includes('rounded-[20px]')) return el;
+      if ((el.className || '').includes('rounded-[20px]')) return (_q.container = el);
       el = el.parentElement;
     }
-    return input.parentElement;
+    return (_q.container = input.parentElement);
   }
 
   // Detect send button going away: check computed opacity + input text
@@ -904,7 +921,7 @@
     if (!show || !cdSpan) return;
     // Dynamic color linked to usage level
     cdSpan.style.color = usageColor();
-    const ms  = (S.session && S.session.resetMs) || S.resetMs || 0;
+    const ms = S.session?.resetMs ?? S.resetMs ?? 0;
     const now = Date.now();
     cdSpan.textContent = (ms > 0 && ms > now) ? fmtCD(ms - now) : (ms > 0 ? t('newCycle') : '—');
     refreshTok();
@@ -1011,6 +1028,7 @@
   //  SPA SURVIVAL
   // ═════════════════════════════════════════════════════════════════════════
   function ensureElements() {
+    invalidateQueryCache(); // body childList changed — DOM refs may be stale
     if (!document.getElementById('cum-ov')) createOverlay();
     if (!document.getElementById('cum-float')) {
       createFloat(); createResizeHandle();
