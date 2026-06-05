@@ -725,9 +725,10 @@
           if ('cum_zen'         in changes) { F.zen        = !!changes.cum_zen.newValue;       applyFloatVisibility(); draw(); }
           if ('cum_halo_active' in changes) { F.haloActive = changes.cum_halo_active.newValue; drawHalo(); }
           if ('cum_halo_idle'   in changes) { F.haloIdle   = changes.cum_halo_idle.newValue;   drawHalo(); }
+          // Keep float redraws on every color tier: drawFloat() derives its color from usageColor().
           if ('cum_color_hi'    in changes) { F.colorHi    = changes.cum_color_hi.newValue;    injectHaloCSS(); drawHalo(); drawSendRing(); drawFloat(); }
-          if ('cum_color_mid'   in changes) { F.colorMid   = changes.cum_color_mid.newValue;   injectHaloCSS(); drawHalo(); drawSendRing(); }
-          if ('cum_color_lo'      in changes) { F.colorLo      = changes.cum_color_lo.newValue;      injectHaloCSS(); drawHalo(); drawSendRing(); }
+          if ('cum_color_mid'   in changes) { F.colorMid   = changes.cum_color_mid.newValue;   injectHaloCSS(); drawHalo(); drawSendRing(); drawFloat(); }
+          if ('cum_color_lo'      in changes) { F.colorLo      = changes.cum_color_lo.newValue;      injectHaloCSS(); drawHalo(); drawSendRing(); drawFloat(); }
           if ('cum_color_mid_pos' in changes) { F.colorMidPos  = changes.cum_color_mid_pos.newValue || 0.4; draw(); }
           if ('cum_allpages'      in changes) { F.allPages     = !!changes.cum_allpages.newValue; }
           if ('cum_fsize'         in changes) { F.fsize        = changes.cum_fsize.newValue;       applyFloatVisibility(); }

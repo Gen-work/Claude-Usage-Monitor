@@ -40,6 +40,8 @@ const test = (name, fn) => {
     return true;
   } catch(e) {
     console.error(`✗ ${name}: ${e.message}`);
+    // Preserve failures for CI and future agents; console output alone still exits 0.
+    process.exitCode = 1;
     return false;
   }
 };
@@ -145,9 +147,9 @@ test('Bug #2: ResetMs time selection priority logic', () => {
   // Scenario 3: Both are set but session.resetMs is 0
   S.session = { resetMs: 0 };
   S.resetMs = Date.now() + 3600000;
-  ms = (S.session && S.session.resetMs) || S.resetMs || 0;
+  // Regression check: nullish coalescing preserves an intentional resetMs of 0.
+  ms = S.session?.resetMs ?? S.resetMs ?? 0;
   assertEquals(ms, 0, 'Should use session.resetMs even if it\'s 0 (falsy)');
-  // ^^^ THIS IS A BUG! When session.resetMs = 0, it will fall through to S.resetMs
 });
 
 test('Bug #2: Time formatting in tooltip', () => {
@@ -155,9 +157,10 @@ test('Bug #2: Time formatting in tooltip', () => {
 
   // Test time in future
   const futureDate = new Date('2026-06-05T15:30:45Z');
-  const timeStr = pad(futureDate.getHours()) + ':' +
-                  pad(futureDate.getMinutes()) + ':' +
-                  pad(futureDate.getSeconds());
+  // Use UTC accessors so this regression stays stable across developer timezones.
+  const timeStr = pad(futureDate.getUTCHours()) + ':' +
+                  pad(futureDate.getUTCMinutes()) + ':' +
+                  pad(futureDate.getUTCSeconds());
 
   assertEquals(timeStr, '15:30:45', 'Time should be formatted correctly');
 });
