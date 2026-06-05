@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Claude Usage Monitor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 280px; max-height: 520px; overflow-y: auto;
+      background: #1a1714;
+      color: #f0ede8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+    }
+
+    /* Scrollbar */
+    body::-webkit-scrollbar { width: 5px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+    body::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
+
+    .header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .header-icon {
+      width: 28px; height: 28px; color: #d97757; flex-shrink: 0;
+      cursor: pointer; transition: transform .3s ease;
+    }
+    .header-icon:hover { transform: scale(1.1); }
+    .header-icon path { transform-origin: 50px 50px; }
+    .header h1 { font-size: 14px; font-weight: 600; color: #f0ede8; }
+    .header .sub { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px; }
+
+    /* ── Reset button ── */
+    .reset-wrap { padding: 6px 12px 0; }
+    .reset-btn {
+      width: 100%; padding: 6px; border-radius: 6px; cursor: pointer;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+      color: rgba(255,255,255,.35); font-size: 11px; transition: all .15s;
+    }
+    .reset-btn:hover {
+      background: rgba(224,82,82,.1); border-color: rgba(224,82,82,.2); color: rgba(224,82,82,.8);
+    }
+
+    /* ── Usage card ── */
+    .usage-card {
+      margin: 12px 12px 0;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .usage-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .usage-label { color: rgba(255,255,255,.45); font-size: 11.5px; }
+    .usage-val   { font-weight: 600; color: #e8a87c; font-variant-numeric: tabular-nums; }
+    .prog-track  { height: 4px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .prog-fill   { height: 100%; border-radius: 2px; background: linear-gradient(90deg,#d97757,#e8a87c); transition: width .5s ease; }
+    .reset-row   { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .reset-label { color: rgba(255,255,255,.35); font-size: 11px; }
+    .reset-val   { color: rgba(255,255,255,.65); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+    /* ── Loading / error ── */
+    .loading { display: flex; align-items: center; gap: 8px; padding: 12px 0 4px; color: rgba(255,255,255,.4); font-size: 12px; }
+    .spin { width:14px; height:14px; border:2px solid rgba(255,255,255,.1); border-top-color:#d97757; border-radius:50%; animation:spin .9s linear infinite; flex-shrink:0; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .error-msg { padding: 10px 0 2px; color: rgba(255,100,100,.8); font-size: 12px; }
+
+    /* ── Settings ── */
+    .section-title {
+      padding: 12px 16px 6px;
+      font-size: 11px; font-weight: 600;
+      color: rgba(255,255,255,.3);
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .setting-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 14px;
+      border-radius: 8px; margin: 0 8px 2px;
+    }
+    .setting-row:hover { background: rgba(255,255,255,.04); }
+    .setting-info .s-label { font-size: 13px; color: rgba(255,255,255,.82); }
+    .setting-info .s-sub   { font-size: 11px; color: rgba(255,255,255,.35); margin-top: 2px; }
+
+    /* Toggle switch */
+    .toggle { position:relative; width:36px; height:20px; flex-shrink:0; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .toggle-track {
+      position:absolute; inset:0; border-radius:20px;
+      background:rgba(255,255,255,.12); cursor:pointer; transition:background .2s;
+    }
+    .toggle input:checked + .toggle-track { background:#d97757; }
+    .toggle-thumb {
+      position:absolute; top:3px; left:3px;
+      width:14px; height:14px; border-radius:50%;
+      background:#fff; transition:transform .2s; pointer-events:none;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform:translateX(16px); }
+
+    /* Slider row */
+    .slider-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 14px 8px; margin: 0 8px;
+    }
+    .slider-row label { font-size: 11px; color: rgba(255,255,255,.35); flex-shrink:0; min-width:60px; }
+    .slider-row input[type=range] {
+      flex:1; height:4px; appearance:none; background:rgba(255,255,255,.12); border-radius:2px; cursor:pointer;
+    }
+    .slider-row input[type=range]::-webkit-slider-thumb {
+      appearance:none; width:12px; height:12px; border-radius:50%; background:#d97757; cursor:pointer;
+    }
+    .slider-val { font-size: 11px; color:rgba(255,255,255,.45); width:28px; text-align:right; flex-shrink:0; }
+
+    /* Gradient color picker */
+    .gradient-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 14px 10px; margin: 0 8px;
+      position: relative;
+    }
+    .gradient-emoji { font-size: 14px; flex-shrink: 0; line-height: 1; }
+    .gradient-bar {
+      flex: 1; height: 18px; border-radius: 9px; position: relative;
+      background: linear-gradient(to right, #d97757, #c96442, #e05252);
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    /* Color stops — native input[type=color] */
+    .g-stop {
+      position: absolute; top: 50%; width: 16px; height: 16px;
+      border-radius: 50%; border: 2px solid rgba(255,255,255,.5);
+      cursor: pointer; transition: border-color .15s;
+      -webkit-appearance: none; appearance: none; padding: 0;
+    }
+    .g-stop::-webkit-color-swatch-wrapper { padding: 0; }
+    .g-stop::-webkit-color-swatch { border: none; border-radius: 50%; }
+    .g-stop:hover { border-color: rgba(255,255,255,.9); }
+    .g-stop.hi { left: -3px; transform: translateY(-50%); }
+    .g-stop.lo { right: -3px; left: auto; transform: translateY(-50%); }
+    /* Mid drag handle */
+    .g-mid-handle {
+      position: absolute; top: 50%; width: 16px; height: 16px;
+      border-radius: 50%; border: 2.5px solid rgba(255,255,255,.75);
+      cursor: ew-resize; background: rgba(0,0,0,.15);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 1px 4px rgba(0,0,0,.4); transition: border-color .15s;
+    }
+    .g-mid-handle:hover, .g-mid-handle.dragging { border-color: #fff; }
+    /* Hover tooltip above gradient bar */
+    .color-tip {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: calc(100% - 2px);
+      background: rgba(16,14,12,.92); color: rgba(255,255,255,.75);
+      font-size: 10.5px; padding: 3px 9px; border-radius: 5px;
+      white-space: nowrap; pointer-events: none;
+      opacity: 0; transition: opacity .18s;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .color-tip.on { opacity: 1; }
+    /* Halo section title row */
+    .halo-title {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .halo-reset-btn {
+      padding: 2px 8px; border-radius: 6px;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+      color: rgba(255,255,255,.3); font-size: 11px; cursor: pointer;
+      transition: all .15s; text-transform: none; letter-spacing: 0; font-weight: 400;
+    }
+    .halo-reset-btn:hover { background: rgba(224,82,82,.1); border-color: rgba(224,82,82,.2); color: rgba(224,82,82,.7); }
+
+    /* Language selector */
+    .lang-row {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding: 6px 14px 10px; margin: 0 8px;
+    }
+    .lang-btn {
+      padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.1);
+      background: transparent; color: rgba(255,255,255,.5); font-size: 11px;
+      cursor: pointer; transition: all .15s ease;
+    }
+    .lang-btn:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.7); }
+    .lang-btn.active { border-color: #d97757; color: #d97757; background: rgba(217,119,87,.08); }
+
+    .divider { height:1px; background:rgba(255,255,255,.06); margin:8px 12px; }
+    .footer { padding: 10px 16px 14px; color:rgba(255,255,255,.25); font-size:10.5px; }
+
+    /* ── Zen mode ── */
+    #zen-view {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      padding: 60px 0; cursor: pointer;
+    }
+    .zen-logo { width: 80px; height: 80px; color: #d97757; animation: zen-spin 12s linear infinite; }
+    .zen-logo path { transform-origin: 50px 50px; }
+    .zen-hint { margin-top: 16px; color: rgba(255,255,255,.2); font-size: 11px; }
+    @keyframes zen-spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- Main view -->
+  <div id="main-view">
+
+    <!-- Header with 12-petal Claude logo (click = zen mode) -->
+    <div class="header">
+      <svg class="header-icon" id="zen-toggle" viewBox="0 0 100 101" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M96.0000 40.0000 L99.5002 42.0000 L99.5002 43.5000 L98.5000 47.0000 L56.0000 57.0000 L52.0040 47.0708 L96.0000 40.0000" style="transform-origin:50px 50px;transform:rotate(330deg) scaleY(1.21842) rotate(-330deg)"/>
+        <path d="M80.1032 10.5903 L84.9968 11.6171 L86.2958 13.2179 L87.5346 17.0540 L87.0213 19.5007 L58.5000 58.5000 L49.0000 49.0000 L75.3008 14.4873 L80.1032 10.5903" style="transform-origin:50px 50px;transform:rotate(300deg) scaleY(1.12175) rotate(-300deg)"/>
+        <path d="M55.5002 4.5000 L58.5005 2.5000 L61.0002 3.5000 L63.5002 7.0000 L56.6511 48.1620 L52.0005 45.0000 L50.0005 39.5000 L53.5003 8.5000 L55.5002 4.5000" style="transform-origin:50px 50px;transform:rotate(270deg) scaleY(1.10008) rotate(-270deg)"/>
+        <path d="M23.4253 5.1588 L26.5075 1.2217 L28.5175 0.7632 L32.5063 1.3458 L34.4748 2.8868 L48.8202 34.6902 L54.0089 49.8008 L47.9378 53.1760 L24.8009 11.1886 L23.4253 5.1588" style="transform-origin:50px 50px;transform:rotate(240deg) scaleY(1.06) rotate(-240deg)"/>
+        <path d="M8.4990 27.0019 L7.4999 23.0001 L10.5003 19.5001 L14.0003 20.0001 L15.0003 20.0001 L36.0000 35.5000 L42.5000 40.5000 L51.5000 47.5000 L46.5000 56.0000 L42.0002 52.5000 L39.0001 49.5000 L10.0000 29.0001 L8.4990 27.0019" style="transform-origin:50px 50px;transform:rotate(210deg) scaleY(0.985) rotate(-210deg)"/>
+        <path d="M2.5003 53.0000 L0.2370 50.5000 L0.2373 48.2759 L2.5003 47.5000 L28.0000 49.0000 L53.0000 51.0000 L52.1885 55.9782 L4.5000 53.5000 L2.5003 53.0000" style="transform-origin:50px 50px;transform:rotate(180deg) scaleY(0.997) rotate(-180deg)"/>
+        <path d="M17.5002 79.0264 L12.5005 79.0264 L10.5124 76.7369 L10.5124 74.0000 L19.0005 68.0000 L53.5082 46.0337 L57.0005 52.0000 L17.5002 79.0264" style="transform-origin:50px 50px;transform:rotate(150deg) scaleY(1.03) rotate(-150deg)"/>
+        <path d="M27.0004 92.9999 L25.0003 93.4999 L22.0003 91.9999 L22.5004 89.4999 L52.0003 50.5000 L56.0004 55.9999 L34.0003 85.0000 L27.0004 92.9999" style="transform-origin:50px 50px;transform:rotate(120deg) scaleY(0.925) rotate(-120deg)"/>
+        <path d="M51.9998 98.0000 L50.5002 100.0000 L47.5002 101.0000 L45.0001 99.0000 L43.5000 96.0000 L51.0003 55.4999 L55.5001 55.9999 L51.9998 98.0000" style="transform-origin:50px 50px;transform:rotate(90deg) scaleY(0.97) rotate(-90deg)"/>
+        <path d="M77.5007 86.9997 L77.5007 90.9997 L77.0006 92.4997 L75.0004 93.4997 L71.5006 93.0339 L47.4669 57.2642 L56.9998 50.0002 L64.9994 64.5004 L65.7507 69.7497 L77.5007 86.9997" style="transform-origin:50px 50px;transform:rotate(60deg) scaleY(1.01158) rotate(-60deg)"/>
+        <path d="M89.0008 80.9991 L89.5008 83.4991 L88.0008 85.4991 L86.5007 84.9991 L78.0007 78.9991 L65.0007 67.4991 L55.0007 60.4991 L58.0000 51.0000 L62.9999 54.0001 L66.0007 59.4991 L89.0008 80.9991" style="transform-origin:50px 50px;transform:rotate(30deg) scaleY(1.13825) rotate(-30deg)"/>
+        <path d="M82.5003 55.5000 L95.0003 56.5000 L98.0003 58.5000 L100.0000 61.5000 L100.0000 63.6587 L94.5003 66.0000 L66.5005 59.0000 L55.0003 58.5000 L58.0000 48.0000 L66.0005 54.0000 L82.5003 55.5000" style="transform-origin:50px 50px;transform:scaleY(1.12992)"/>
+      </svg>
+      <div>
+        <h1 data-i18n="title">Claude 用量监控</h1>
+        <div class="sub" id="last-updated" data-i18n="loading">正在加载…</div>
+      </div>
+    </div>
+
+    <!-- Reset button -->
+    <div class="reset-wrap">
+      <button id="btn-reset" class="reset-btn" data-i18n="resetAll">重置所有设置</button>
+    </div>
+
+    <!-- Usage display -->
+    <div class="usage-card">
+      <div id="loading" class="loading">
+        <div class="spin"></div> <span data-i18n="loadingData">读取用量数据…</span>
+      </div>
+      <div id="usage-body" style="display:none">
+        <div class="usage-row">
+          <span class="usage-label" data-i18n="windowRemain">5小时窗口剩余</span>
+          <span class="usage-val" id="pct-val">—</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" id="prog" style="width:100%"></div></div>
+        <div class="reset-row">
+          <span class="reset-label" data-i18n="resetLabel">重置</span>
+          <span class="reset-val" id="reset-val">—</span>
+        </div>
+      </div>
+      <div id="error-body" style="display:none" class="error-msg" data-i18n="errorMsg">无法获取数据，请确认已登录 Claude.ai</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Float icon settings -->
+    <div class="section-title" data-i18n="floatSection">悬浮图标</div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="s-label" data-i18n="enableFloat">启用悬浮 Claude 图标</div>
+        <div class="s-sub" data-i18n="enableFloatSub">在网页右下角显示用量饼图</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-float">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="setting-row" id="watermark-row" style="opacity:.45;pointer-events:none">
+      <div class="setting-info">
+        <div class="s-label" data-i18n="watermarkLabel">水印模式</div>
+        <div class="s-sub" data-i18n="watermarkSub">鼠标穿透，不遮挡页面内容</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-wm">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="setting-row" id="allpages-row" style="opacity:.45;pointer-events:none">
+      <div class="setting-info">
+        <div class="s-label" data-i18n="allPages">跨页显示</div>
+        <div class="s-sub" data-i18n="allPagesSub">在任意网页显示悬浮图标</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-allpages">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="slider-row" id="opacity-row" style="opacity:.45;pointer-events:none">
+      <label data-i18n="opacityLabel">透明度</label>
+      <input type="range" id="opacity-slider" min="10" max="100" value="100" step="5">
+      <span class="slider-val" id="opacity-label">100%</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Halo settings -->
+    <div class="section-title halo-title">
+      <span data-i18n="haloSection">呼吸灯设置</span>
+      <button id="btn-reset-colors" class="halo-reset-btn" style="display:none" data-i18n="resetColors">重置颜色</button>
+    </div>
+    <div class="slider-row">
+      <label data-i18n="activeIntensity">输入时强度</label>
+      <input type="range" id="halo-active-slider" min="0" max="100" value="100" step="5">
+      <span class="slider-val" id="halo-active-label">100%</span>
+    </div>
+    <div class="slider-row">
+      <label data-i18n="idleIntensity">待机时强度</label>
+      <input type="range" id="halo-idle-slider" min="0" max="100" value="50" step="5">
+      <span class="slider-val" id="halo-idle-label">50%</span>
+    </div>
+    <!-- Gradient color bar -->
+    <div class="gradient-row">
+      <span class="gradient-emoji">🔋</span>
+      <div class="gradient-bar" id="gradient-bar">
+        <input type="color" class="g-stop hi" id="color-hi" value="#d97757">
+        <div class="g-mid-handle" id="gmid-handle"></div>
+        <input type="color" class="g-stop lo" id="color-lo" value="#e05252">
+        <input type="color" id="color-mid-picker" value="#c96442"
+          style="position:fixed;opacity:0;pointer-events:none;width:1px;height:1px;top:-9999px">
+      </div>
+      <span class="gradient-emoji">🪫</span>
+      <div class="color-tip" id="color-tip" data-i18n="clickColor">点击以自定义颜色</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-title" data-i18n="language">语言</div>
+    <div class="lang-row" id="lang-row"></div>
+
+    <div class="footer" data-i18n="footer">图标可拖拽移动 · 右键可快速设置</div>
+
+  </div><!-- /main-view -->
+
+  <!-- Zen mode view (hidden by default) -->
+  <div id="zen-view">
+    <svg class="zen-logo" viewBox="0 0 100 101" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M96.0000 40.0000 L99.5002 42.0000 L99.5002 43.5000 L98.5000 47.0000 L56.0000 57.0000 L52.0040 47.0708 L96.0000 40.0000" style="transform-origin:50px 50px;transform:rotate(330deg) scaleY(1.21842) rotate(-330deg)"/>
+      <path d="M80.1032 10.5903 L84.9968 11.6171 L86.2958 13.2179 L87.5346 17.0540 L87.0213 19.5007 L58.5000 58.5000 L49.0000 49.0000 L75.3008 14.4873 L80.1032 10.5903" style="transform-origin:50px 50px;transform:rotate(300deg) scaleY(1.12175) rotate(-300deg)"/>
+      <path d="M55.5002 4.5000 L58.5005 2.5000 L61.0002 3.5000 L63.5002 7.0000 L56.6511 48.1620 L52.0005 45.0000 L50.0005 39.5000 L53.5003 8.5000 L55.5002 4.5000" style="transform-origin:50px 50px;transform:rotate(270deg) scaleY(1.10008) rotate(-270deg)"/>
+      <path d="M23.4253 5.1588 L26.5075 1.2217 L28.5175 0.7632 L32.5063 1.3458 L34.4748 2.8868 L48.8202 34.6902 L54.0089 49.8008 L47.9378 53.1760 L24.8009 11.1886 L23.4253 5.1588" style="transform-origin:50px 50px;transform:rotate(240deg) scaleY(1.06) rotate(-240deg)"/>
+      <path d="M8.4990 27.0019 L7.4999 23.0001 L10.5003 19.5001 L14.0003 20.0001 L15.0003 20.0001 L36.0000 35.5000 L42.5000 40.5000 L51.5000 47.5000 L46.5000 56.0000 L42.0002 52.5000 L39.0001 49.5000 L10.0000 29.0001 L8.4990 27.0019" style="transform-origin:50px 50px;transform:rotate(210deg) scaleY(0.985) rotate(-210deg)"/>
+      <path d="M2.5003 53.0000 L0.2370 50.5000 L0.2373 48.2759 L2.5003 47.5000 L28.0000 49.0000 L53.0000 51.0000 L52.1885 55.9782 L4.5000 53.5000 L2.5003 53.0000" style="transform-origin:50px 50px;transform:rotate(180deg) scaleY(0.997) rotate(-180deg)"/>
+      <path d="M17.5002 79.0264 L12.5005 79.0264 L10.5124 76.7369 L10.5124 74.0000 L19.0005 68.0000 L53.5082 46.0337 L57.0005 52.0000 L17.5002 79.0264" style="transform-origin:50px 50px;transform:rotate(150deg) scaleY(1.03) rotate(-150deg)"/>
+      <path d="M27.0004 92.9999 L25.0003 93.4999 L22.0003 91.9999 L22.5004 89.4999 L52.0003 50.5000 L56.0004 55.9999 L34.0003 85.0000 L27.0004 92.9999" style="transform-origin:50px 50px;transform:rotate(120deg) scaleY(0.925) rotate(-120deg)"/>
+      <path d="M51.9998 98.0000 L50.5002 100.0000 L47.5002 101.0000 L45.0001 99.0000 L43.5000 96.0000 L51.0003 55.4999 L55.5001 55.9999 L51.9998 98.0000" style="transform-origin:50px 50px;transform:rotate(90deg) scaleY(0.97) rotate(-90deg)"/>
+      <path d="M77.5007 86.9997 L77.5007 90.9997 L77.0006 92.4997 L75.0004 93.4997 L71.5006 93.0339 L47.4669 57.2642 L56.9998 50.0002 L64.9994 64.5004 L65.7507 69.7497 L77.5007 86.9997" style="transform-origin:50px 50px;transform:rotate(60deg) scaleY(1.01158) rotate(-60deg)"/>
+      <path d="M89.0008 80.9991 L89.5008 83.4991 L88.0008 85.4991 L86.5007 84.9991 L78.0007 78.9991 L65.0007 67.4991 L55.0007 60.4991 L58.0000 51.0000 L62.9999 54.0001 L66.0007 59.4991 L89.0008 80.9991" style="transform-origin:50px 50px;transform:rotate(30deg) scaleY(1.13825) rotate(-30deg)"/>
+      <path d="M82.5003 55.5000 L95.0003 56.5000 L98.0003 58.5000 L100.0000 61.5000 L100.0000 63.6587 L94.5003 66.0000 L66.5005 59.0000 L55.0003 58.5000 L58.0000 48.0000 L66.0005 54.0000 L82.5003 55.5000" style="transform-origin:50px 50px;transform:scaleY(1.12992)"/>
+    </svg>
+    <div class="zen-hint">click to exit</div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

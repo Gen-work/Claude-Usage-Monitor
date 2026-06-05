@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Usage Monitor",
+  "version": "2.0",
+  "description": "在输入框旁以光环强弱直观显示 Claude 用量。",
+  "permissions": [
+    "storage",
+    "cookies",
+    "webRequest",
+    "tabs",
+    "alarms"
+  ],
+  "host_permissions": [
+    "*://*.claude.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://claude.ai/*"],
+      "js": ["i18n.js", "content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "exclude_matches": ["*://claude.ai/*"],
+      "js": ["i18n.js", "float_only.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icon.png"
+    }
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}
