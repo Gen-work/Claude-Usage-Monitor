@@ -620,7 +620,7 @@
       if (Math.abs(p - F.colorMidPos) > 0.008) mdMoved = true;
       F.colorMidPos = p;
       safeSet({ cum_color_mid_pos: p });
-      updateBar(); injectHaloCSS(); drawHalo(); drawSendRing();
+      updateBar(); injectHaloCSS(); drawHalo(); drawSendRing(); drawFloat();
     });
     midDrag.addEventListener('pointerup', () => {
       if (!mdMoved) {

@@ -12,6 +12,7 @@ const test = (name, fn) => {
     }
   } catch(e) {
     console.error(`✗ ${name}: ${e.message}\n`);
+    process.exitCode = 1;
     return false;
   }
 };
