@@ -19,17 +19,20 @@
 
   // ── State ─────────────────────────────────────────────────────────────────
   const S = { remainPct: 100, resetMs: 0, session: null, weekly: null, loaded: false, active: false, stale: false };
+  // Halo colours / intensities are stored per provider (see shared.js)
+  const PC = C.PROVIDER_COLORS[PROVIDER] || C.DEFAULT_COLORS;
+  const K  = (base) => C.settingKey(base, PROVIDER);
   const F = {
     enabled: false, opacity: 1.0, watermark: false, zen: false, allPages: false,
     haloActive: 1.0, haloIdle: 0.5,
-    colorHi: C.DEFAULT_COLORS.hi, colorMid: C.DEFAULT_COLORS.mid, colorLo: C.DEFAULT_COLORS.lo,
-    colorMidPos: C.DEFAULT_COLORS.midPos, fsize: 56,
+    colorHi: PC.hi, colorMid: PC.mid, colorLo: PC.lo,
+    colorMidPos: PC.midPos, fsize: 56,
   };
   const usageColor = () => C.usageColor(F, S.remainPct);
   const safeSet = C.safeSet;
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
-  let haloEl, sendRingEl, sendArc, inlineEl, cdSpan, tokSpan, tokWrap;
+  let haloEl, sendRingEl, sendArc, srSvg, srTrack, inlineEl, cdSpan, tokSpan, tokWrap;
   let floatEl, floatPaths = [], floatTipEl, ctxEl, rzEl;
   let activeSubMenus = [];
   let srPrevVisible = false;
@@ -296,6 +299,7 @@
     sendArc.setAttribute('stroke-dasharray','100'); sendArc.setAttribute('stroke-dashoffset','100');
     sendArc.style.transition = 'stroke-dashoffset .7s ease, stroke .5s ease';
     svg.appendChild(sendArc);
+    srSvg = svg; srTrack = tr;
     sendRingEl.appendChild(svg);
     ov.appendChild(sendRingEl);
 
@@ -564,9 +568,9 @@
 
     const haloSub = subMenu(t('haloLabel'));
     hdr(t('activeIntensity'), haloSub);
-    sliderRow(F.haloActive, (v) => { F.haloActive = v; drawHalo(); safeSet({ cum_halo_active: v }); }, haloSub);
+    sliderRow(F.haloActive, (v) => { F.haloActive = v; drawHalo(); safeSet({ [K('cum_halo_active')]: v }); }, haloSub);
     hdr(t('idleIntensity'), haloSub);
-    sliderRow(F.haloIdle, (v) => { F.haloIdle = v; drawHalo(); safeSet({ cum_halo_idle: v }); }, haloSub);
+    sliderRow(F.haloIdle, (v) => { F.haloIdle = v; drawHalo(); safeSet({ [K('cum_halo_idle')]: v }); }, haloSub);
     sep(haloSub);
     addGradientBarWidget(haloSub);
     sep();
@@ -607,9 +611,9 @@
     let activePSlot = 'hi';
     picker.addEventListener('input', () => {
       const val = picker.value;
-      if (activePSlot === 'hi')       { F.colorHi  = val; safeSet({ cum_color_hi:  val }); }
-      else if (activePSlot === 'mid') { F.colorMid = val; safeSet({ cum_color_mid: val }); }
-      else                            { F.colorLo  = val; safeSet({ cum_color_lo:  val }); }
+      if (activePSlot === 'hi')       { F.colorHi  = val; safeSet({ [K('cum_color_hi')]:  val }); }
+      else if (activePSlot === 'mid') { F.colorMid = val; safeSet({ [K('cum_color_mid')]: val }); }
+      else                            { F.colorLo  = val; safeSet({ [K('cum_color_lo')]:  val }); }
       injectHaloCSS(); drawHalo(); drawSendRing(); drawFloat(); updateBar();
     });
 
@@ -647,7 +651,7 @@
       p = Math.max(0.05, Math.min(0.95, p));
       if (Math.abs(p - F.colorMidPos) > 0.008) mdMoved = true;
       F.colorMidPos = p;
-      safeSet({ cum_color_mid_pos: p });
+      safeSet({ [K('cum_color_mid_pos')]: p });
       updateBar(); injectHaloCSS(); drawHalo(); drawSendRing(); drawFloat();
     });
     midDrag.addEventListener('pointerup', () => {
@@ -666,9 +670,9 @@
     const resetBtn = document.createElement('button'); resetBtn.className = 'cum-ctx-creset'; resetBtn.type = 'button';
     resetBtn.textContent = t('resetColors');
     resetBtn.addEventListener('click', () => {
-      const D = C.DEFAULT_COLORS;
-      F.colorHi = D.hi; F.colorMid = D.mid; F.colorLo = D.lo; F.colorMidPos = D.midPos;
-      safeSet({ cum_color_hi: F.colorHi, cum_color_mid: F.colorMid, cum_color_lo: F.colorLo, cum_color_mid_pos: F.colorMidPos });
+      F.colorHi = PC.hi; F.colorMid = PC.mid; F.colorLo = PC.lo; F.colorMidPos = PC.midPos;
+      safeSet({ [K('cum_color_hi')]: F.colorHi, [K('cum_color_mid')]: F.colorMid,
+                [K('cum_color_lo')]: F.colorLo, [K('cum_color_mid_pos')]: F.colorMidPos });
       injectHaloCSS(); drawHalo(); drawSendRing(); drawFloat(); updateBar();
     });
     rrow.appendChild(resetBtn);
@@ -704,8 +708,7 @@
   //  SETTINGS
   // ═════════════════════════════════════════════════════════════════════════
   const SETTING_KEYS = ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_fpos','cum_lang',
-    'cum_halo_active','cum_halo_idle','cum_color_hi','cum_color_mid','cum_color_lo',
-    'cum_fsize','cum_zen','cum_allpages','cum_color_mid_pos'];
+    'cum_fsize','cum_zen','cum_allpages', ...C.PER_PROVIDER_KEYS.map(K)];
 
   function loadFloatSettings() {
     if (!C.isCtxValid()) return;
@@ -718,12 +721,13 @@
           F.watermark    = !!res.cum_fwatermark;
           F.zen          = !!res.cum_zen;
           F.allPages     = !!res.cum_allpages;
-          F.haloActive   = typeof res.cum_halo_active === 'number' ? res.cum_halo_active : 1.0;
-          F.haloIdle     = typeof res.cum_halo_idle   === 'number' ? res.cum_halo_idle   : 0.5;
-          F.colorHi      = res.cum_color_hi  || C.DEFAULT_COLORS.hi;
-          F.colorMid     = res.cum_color_mid || C.DEFAULT_COLORS.mid;
-          F.colorLo      = res.cum_color_lo  || C.DEFAULT_COLORS.lo;
-          F.colorMidPos  = typeof res.cum_color_mid_pos === 'number' ? res.cum_color_mid_pos : C.DEFAULT_COLORS.midPos;
+          const num = (k, d) => typeof res[K(k)] === 'number' ? res[K(k)] : d;
+          F.haloActive   = num('cum_halo_active', 1.0);
+          F.haloIdle     = num('cum_halo_idle', 0.5);
+          F.colorHi      = res[K('cum_color_hi')]  || PC.hi;
+          F.colorMid     = res[K('cum_color_mid')] || PC.mid;
+          F.colorLo      = res[K('cum_color_lo')]  || PC.lo;
+          F.colorMidPos  = num('cum_color_mid_pos', PC.midPos);
           F.fsize        = typeof res.cum_fsize === 'number' ? res.cum_fsize : 56;
           if (res.cum_fpos && typeof res.cum_fpos.right === 'number') {
             floatEl.style.right  = res.cum_fpos.right  + 'px';
@@ -748,12 +752,13 @@
           if ('cum_fopacity'      in changes) { F.opacity    = changes.cum_fopacity.newValue ?? 1; if (floatEl) floatEl.style.opacity = String(F.opacity); }
           if ('cum_fwatermark'    in changes) { F.watermark  = !!changes.cum_fwatermark.newValue; applyFloatVisibility(); }
           if ('cum_zen'           in changes) { F.zen        = !!changes.cum_zen.newValue;        applyFloatVisibility(); draw(); }
-          if ('cum_halo_active'   in changes) { F.haloActive = changes.cum_halo_active.newValue ?? 1;   drawHalo(); }
-          if ('cum_halo_idle'     in changes) { F.haloIdle   = changes.cum_halo_idle.newValue ?? 0.5;   drawHalo(); }
-          if ('cum_color_hi'      in changes) { F.colorHi    = changes.cum_color_hi.newValue  || C.DEFAULT_COLORS.hi;  recolor(); }
-          if ('cum_color_mid'     in changes) { F.colorMid   = changes.cum_color_mid.newValue || C.DEFAULT_COLORS.mid; recolor(); }
-          if ('cum_color_lo'      in changes) { F.colorLo    = changes.cum_color_lo.newValue  || C.DEFAULT_COLORS.lo;  recolor(); }
-          if ('cum_color_mid_pos' in changes) { F.colorMidPos = changes.cum_color_mid_pos.newValue ?? C.DEFAULT_COLORS.midPos; draw(); }
+          const ch = (k) => changes[K(k)];
+          if (ch('cum_halo_active'))   { F.haloActive = ch('cum_halo_active').newValue ?? 1;   drawHalo(); }
+          if (ch('cum_halo_idle'))     { F.haloIdle   = ch('cum_halo_idle').newValue ?? 0.5;   drawHalo(); }
+          if (ch('cum_color_hi'))      { F.colorHi    = ch('cum_color_hi').newValue  || PC.hi;  recolor(); }
+          if (ch('cum_color_mid'))     { F.colorMid   = ch('cum_color_mid').newValue || PC.mid; recolor(); }
+          if (ch('cum_color_lo'))      { F.colorLo    = ch('cum_color_lo').newValue  || PC.lo;  recolor(); }
+          if (ch('cum_color_mid_pos')) { F.colorMidPos = ch('cum_color_mid_pos').newValue ?? PC.midPos; draw(); }
           if ('cum_allpages'      in changes) { F.allPages   = !!changes.cum_allpages.newValue; }
           if ('cum_fsize'         in changes) { F.fsize      = changes.cum_fsize.newValue || 56;  applyFloatVisibility(); }
           if ('cum_lang'          in changes) { lang = changes.cum_lang.newValue || C.guessLang(navigator.languages); applyLangToUi(); draw(); }
@@ -856,10 +861,7 @@
       if (srShouldShow) {
         const sr = sb.getBoundingClientRect();
         const key = `${sr.left}|${sr.top}|${sr.width}|${sr.height}`;
-        if (key !== last.sr) {
-          last.sr = key;
-          Object.assign(sendRingEl.style, { left: (sr.left + sr.width/2 - 20) + 'px', top: (sr.top + sr.height/2 - 20) + 'px' });
-        }
+        if (key !== last.sr) { last.sr = key; fitRing(sb, sr); }
         sendRingEl.classList.toggle('act', S.active && S.loaded);
         sendRingEl.classList.toggle('ld',  !S.active && S.loaded);
       }
@@ -887,6 +889,26 @@
         Object.assign(rzEl.style, { left: (fr.right - 14) + 'px', top: (fr.bottom - 14) + 'px', right: 'auto', bottom: 'auto' });
       }
     }
+  }
+
+  // Size and shape the ring after the host's send button: Claude uses a
+  // rounded square, ChatGPT a circle — the ring follows the button's own radius.
+  function fitRing(sb, sr) {
+    const size = Math.round(Math.max(sr.width, sr.height)) + 8;
+    let br = 10;
+    try { br = parseFloat(getComputedStyle(sb).borderRadius) || 10; } catch (e) {}
+    const rx = Math.min(size / 2, br + 4);
+    sendRingEl.style.width = size + 'px'; sendRingEl.style.height = size + 'px';
+    srSvg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    srSvg.setAttribute('width', String(size)); srSvg.setAttribute('height', String(size));
+    for (const r of [srTrack, sendArc]) {
+      r.setAttribute('width', String(size - 4)); r.setAttribute('height', String(size - 4));
+      r.setAttribute('rx', String(rx)); r.setAttribute('ry', String(rx));
+    }
+    Object.assign(sendRingEl.style, {
+      left: (sr.left + sr.width / 2 - size / 2) + 'px',
+      top:  (sr.top  + sr.height / 2 - size / 2) + 'px',
+    });
   }
 
   // ═════════════════════════════════════════════════════════════════════════

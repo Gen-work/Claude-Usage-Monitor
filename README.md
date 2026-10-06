@@ -14,8 +14,8 @@ Claude.ai には5時間ごと・7日ごとの利用量制限があるが、残�
 
 ### 機能
 
-- **ハロー（呼吸灯）**: 入力欄の周囲が残量に応じた色・強さで光る。入力中は強く、待機中は弱く。ライト／ダークテーマを自動判定し、文字色を切り替える。
-- **送信ボタンのリング**: 送信ボタンの周囲に残量のリングゲージを表示。
+- **ハロー（呼吸灯）**: 入力欄の周囲が残量に応じた色・強さで光る。入力中は強く、待機中は弱く。ライト／ダークテーマを自動判定し、文字色を切り替える。色と強度は Claude / ChatGPT で別々に設定できる（ChatGPT の既定色は紫）。
+- **送信ボタンのリング**: 送信ボタンの周囲に残量のリングゲージを表示。ボタンの形に合わせて角丸四角（Claude）／円（ChatGPT）になる。
 - **インラインチップ**: 入力中に、次回リセットまでのカウントダウンと概算トークン数（CJK 文字は 1 文字 ≒ 1.3 トークンで重めに見積もる）を表示。
 - **フローティングアイコン**: 12 枚の花弁で残量を示す Claude マーク。ドラッグ移動・リサイズ・右クリック設定。「全ページ表示」を有効にすると任意のサイトにも表示でき、表示するデータソース（Claude / ChatGPT）を選べる。
 - **ポップアップ**: Claude / ChatGPT を切り替えて 5時間枠と 7日枠の残量・リセット時刻を確認。
@@ -85,8 +85,8 @@ Claude.ai enforces rolling 5-hour and 7-day usage windows, but checking your rem
 
 ### Features
 
-- **Halo**: the composer glows in a colour and intensity that track remaining quota; stronger while typing, softer when idle. Light / dark host themes are detected automatically.
-- **Send ring**: a ring gauge around the send button.
+- **Halo**: the composer glows in a colour and intensity that track remaining quota; stronger while typing, softer when idle. Light / dark host themes are detected automatically. Colours and intensities are configured per provider (ChatGPT defaults to violet).
+- **Send ring**: a ring gauge around the send button that follows the button's shape — rounded square on Claude, circle on ChatGPT.
 - **Inline chip**: while typing, a countdown to the next reset and a rough token estimate (CJK characters are weighted ≈1.3 tokens each instead of being under-counted).
 - **Floating icon**: the 12-petal Claude mark fills according to remaining quota. Drag, resize, right-click for settings. With "All pages" on, it appears on any site and you can choose which source (Claude / ChatGPT) it shows.
 - **Popup**: switch between Claude and ChatGPT; shows both the 5-hour and the 7-day window with reset countdowns.
@@ -154,8 +154,8 @@ Claude.ai 有滚动的 5 小时和 7 天用量限制，但想查看剩余额度�
 
 ### 功能
 
-- **呼吸灯光环**：输入框外围随剩余额度改变颜色和强度；输入时更亮，待机时更弱；自动识别页面明暗主题。
-- **发送按钮环形进度**：发送按钮周围的环形量表。
+- **呼吸灯光环**：输入框外围随剩余额度改变颜色和强度；输入时更亮，待机时更弱；自动识别页面明暗主题。颜色和强度按 Claude / ChatGPT 分别保存（ChatGPT 默认紫色）。
+- **发送按钮环形进度**：发送按钮周围的环形量表，形状跟随按钮：Claude 为圆角方形，ChatGPT 为圆形。
 - **内联信息条**：输入时显示到下次重置的倒计时和粗略 token 估算（CJK 字符按约 1.3 token/字计算，不再被低估）。
 - **悬浮图标**：12 瓣 Claude 标志按剩余额度填充；可拖拽、缩放、右键设置。开启"跨页显示"后可出现在任意网站，并可选择显示 Claude 还是 ChatGPT 的数据。
 - **弹出面板**：Claude / ChatGPT 切换，同时显示 5 小时与 7 天窗口的剩余量与重置倒计时。

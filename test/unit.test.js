@@ -188,6 +188,13 @@ test('isUsable', () => {
 test('escapeHtml', () => {
   assert.equal(C.escapeHtml('<a href="x">&\'</a>'), '&lt;a href=&quot;x&quot;&gt;&amp;&#39;&lt;/a&gt;');
 });
+test('settingKey keeps legacy keys for Claude and suffixes other providers', () => {
+  assert.equal(C.settingKey('cum_color_hi', 'claude'), 'cum_color_hi');
+  assert.equal(C.settingKey('cum_color_hi', undefined), 'cum_color_hi');
+  assert.equal(C.settingKey('cum_color_hi', 'chatgpt'), 'cum_color_hi_chatgpt');
+  for (const p of C.PROVIDERS) assert.ok(C.PROVIDER_COLORS[p] && /^#/.test(C.PROVIDER_COLORS[p].hi), `colours for ${p}`);
+  assert.equal(C.PER_PROVIDER_KEYS.length, 6);
+});
 test('USAGE_KEY keeps the legacy Claude storage key', () => {
   assert.equal(C.USAGE_KEY.claude, 'usageData');
   assert.notEqual(C.USAGE_KEY.chatgpt, 'usageData');

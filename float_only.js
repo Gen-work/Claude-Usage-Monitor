@@ -24,6 +24,26 @@
   const usageColor = () => C.usageColor(F, S.remainPct);
   const dataKey = () => C.USAGE_KEY[F.provider] || C.USAGE_KEY.claude;
 
+  // Halo colours / intensities are stored per provider; the float follows the
+  // currently selected source.
+  const K  = (base) => C.settingKey(base, F.provider);
+  const PC = () => C.PROVIDER_COLORS[F.provider] || C.DEFAULT_COLORS;
+  const ALL_PROVIDER_KEYS = C.PROVIDERS.flatMap(p => C.PER_PROVIDER_KEYS.map(b => C.settingKey(b, p)));
+  function applyProviderSettings(res) {
+    const D = PC();
+    const num = (k, d) => typeof res[K(k)] === 'number' ? res[K(k)] : d;
+    F.haloActive  = num('cum_halo_active', 1.0);
+    F.haloIdle    = num('cum_halo_idle', 0.5);
+    F.colorHi     = res[K('cum_color_hi')]  || D.hi;
+    F.colorMid    = res[K('cum_color_mid')] || D.mid;
+    F.colorLo     = res[K('cum_color_lo')]  || D.lo;
+    F.colorMidPos = num('cum_color_mid_pos', D.midPos);
+  }
+  function loadProviderSettings() {
+    if (!C.isCtxValid()) return;
+    try { chrome.storage.local.get(ALL_PROVIDER_KEYS, (res) => { applyProviderSettings(res); drawFloat(); }); } catch (e) {}
+  }
+
   // ── DOM ───────────────────────────────────────────────────────────────────
   let floatEl, floatPaths = [], floatTipEl, ctxEl, rzEl, bloomStyle;
   let activeSubMenus = [];
@@ -416,7 +436,7 @@
     // Data source
     const srcSub = subMenu(t('source'));
     C.PROVIDERS.forEach((p) => {
-      item(C.PROVIDER_LABEL[p], '', () => { F.provider = p; safeSet({ cum_provider: p }); loadUsage(); }, F.provider === p, srcSub);
+      item(C.PROVIDER_LABEL[p], '', () => { F.provider = p; safeSet({ cum_provider: p }); loadProviderSettings(); loadUsage(); }, F.provider === p, srcSub);
     });
     sep();
 
@@ -426,9 +446,9 @@
 
     const colorSub = subMenu(t('haloLabel'));
     hdr(t('activeIntensity'), colorSub);
-    sliderRow(F.haloActive, (v) => { F.haloActive = v; safeSet({ cum_halo_active: v }); }, colorSub);
+    sliderRow(F.haloActive, (v) => { F.haloActive = v; safeSet({ [K('cum_halo_active')]: v }); }, colorSub);
     hdr(t('idleIntensity'), colorSub);
-    sliderRow(F.haloIdle, (v) => { F.haloIdle = v; safeSet({ cum_halo_idle: v }); }, colorSub);
+    sliderRow(F.haloIdle, (v) => { F.haloIdle = v; safeSet({ [K('cum_halo_idle')]: v }); }, colorSub);
     sep(colorSub);
     addGradientBarWidget(colorSub);
     sep();
@@ -460,9 +480,9 @@
     let activePSlot = 'hi';
     picker.addEventListener('input', () => {
       const val = picker.value;
-      if (activePSlot === 'hi')       { F.colorHi  = val; safeSet({ cum_color_hi:  val }); }
-      else if (activePSlot === 'mid') { F.colorMid = val; safeSet({ cum_color_mid: val }); }
-      else                            { F.colorLo  = val; safeSet({ cum_color_lo:  val }); }
+      if (activePSlot === 'hi')       { F.colorHi  = val; safeSet({ [K('cum_color_hi')]:  val }); }
+      else if (activePSlot === 'mid') { F.colorMid = val; safeSet({ [K('cum_color_mid')]: val }); }
+      else                            { F.colorLo  = val; safeSet({ [K('cum_color_lo')]:  val }); }
       drawFloat(); updateBar();
     });
 
@@ -491,7 +511,7 @@
       let p = (ev.clientX - br.left) / br.width;
       p = Math.max(0.05, Math.min(0.95, p));
       if (Math.abs(p - F.colorMidPos) > 0.008) mdMoved = true;
-      F.colorMidPos = p; safeSet({ cum_color_mid_pos: p });
+      F.colorMidPos = p; safeSet({ [K('cum_color_mid_pos')]: p });
       updateBar(); drawFloat();
     });
     midDrag.addEventListener('pointerup', () => { if (!mdMoved) { activePSlot = 'mid'; picker.value = F.colorMid; picker.click(); hideTip(); } mdDrag = false; });
@@ -507,9 +527,10 @@
     const resetBtn = document.createElement('button'); resetBtn.className = 'cum-ext-creset'; resetBtn.type = 'button';
     resetBtn.textContent = t('resetColors');
     resetBtn.addEventListener('click', () => {
-      const D = C.DEFAULT_COLORS;
+      const D = PC();
       F.colorHi = D.hi; F.colorMid = D.mid; F.colorLo = D.lo; F.colorMidPos = D.midPos;
-      safeSet({ cum_color_hi: F.colorHi, cum_color_mid: F.colorMid, cum_color_lo: F.colorLo, cum_color_mid_pos: F.colorMidPos });
+      safeSet({ [K('cum_color_hi')]: F.colorHi, [K('cum_color_mid')]: F.colorMid,
+                [K('cum_color_lo')]: F.colorLo, [K('cum_color_mid_pos')]: F.colorMidPos });
       drawFloat(); updateBar();
     });
     rrow.appendChild(resetBtn);
@@ -542,16 +563,11 @@
         if (area !== 'local') return;
         try {
           if (dataKey() in changes)          applyData(changes[dataKey()].newValue);
-          if ('cum_provider'      in changes) { F.provider    = C.USAGE_KEY[changes.cum_provider.newValue] ? changes.cum_provider.newValue : 'claude'; loadUsage(); }
+          if ('cum_provider'      in changes) { F.provider    = C.USAGE_KEY[changes.cum_provider.newValue] ? changes.cum_provider.newValue : 'claude'; loadProviderSettings(); loadUsage(); }
+          else if (ALL_PROVIDER_KEYS.some(k => k in changes)) loadProviderSettings();
           if ('cum_allpages'      in changes) { F.allPages    = !!changes.cum_allpages.newValue;   applyVisibility(); }
           if ('cum_fopacity'      in changes) { F.opacity     = changes.cum_fopacity.newValue ?? 1; applyVisibility(); }
           if ('cum_fwatermark'    in changes) { F.watermark   = !!changes.cum_fwatermark.newValue; applyVisibility(); }
-          if ('cum_halo_active'   in changes) { F.haloActive  = changes.cum_halo_active.newValue ?? 1; }
-          if ('cum_halo_idle'     in changes) { F.haloIdle    = changes.cum_halo_idle.newValue ?? 0.5; }
-          if ('cum_color_hi'      in changes) { F.colorHi     = changes.cum_color_hi.newValue  || C.DEFAULT_COLORS.hi;  drawFloat(); }
-          if ('cum_color_mid'     in changes) { F.colorMid    = changes.cum_color_mid.newValue || C.DEFAULT_COLORS.mid; drawFloat(); }
-          if ('cum_color_lo'      in changes) { F.colorLo     = changes.cum_color_lo.newValue  || C.DEFAULT_COLORS.lo;  drawFloat(); }
-          if ('cum_color_mid_pos' in changes) { F.colorMidPos = changes.cum_color_mid_pos.newValue ?? C.DEFAULT_COLORS.midPos; drawFloat(); }
           if ('cum_fsize'         in changes) { F.fsize       = changes.cum_fsize.newValue || 56; applyVisibility(); }
           if ('cum_fpos'          in changes && !dragging && changes.cum_fpos.newValue) {
             curRight = changes.cum_fpos.newValue.right; curBottom = changes.cum_fpos.newValue.bottom;
@@ -582,9 +598,8 @@
     injectStyles();
     try {
       chrome.storage.local.get(
-        ['cum_allpages','cum_fopacity','cum_fwatermark','cum_fpos','cum_lang','cum_provider',
-         'cum_halo_active','cum_halo_idle','cum_color_hi','cum_color_mid','cum_color_lo',
-         'cum_fsize','cum_color_mid_pos'],
+        ['cum_allpages','cum_fopacity','cum_fwatermark','cum_fpos','cum_lang','cum_provider','cum_fsize',
+         ...ALL_PROVIDER_KEYS],
         (res) => {
           try {
             if (res.cum_lang) lang = res.cum_lang;
@@ -592,12 +607,7 @@
             F.allPages    = !!res.cum_allpages;
             F.opacity     = typeof res.cum_fopacity    === 'number' ? res.cum_fopacity    : 1.0;
             F.watermark   = !!res.cum_fwatermark;
-            F.haloActive  = typeof res.cum_halo_active === 'number' ? res.cum_halo_active : 1.0;
-            F.haloIdle    = typeof res.cum_halo_idle   === 'number' ? res.cum_halo_idle   : 0.5;
-            F.colorHi     = res.cum_color_hi  || C.DEFAULT_COLORS.hi;
-            F.colorMid    = res.cum_color_mid || C.DEFAULT_COLORS.mid;
-            F.colorLo     = res.cum_color_lo  || C.DEFAULT_COLORS.lo;
-            F.colorMidPos = typeof res.cum_color_mid_pos === 'number' ? res.cum_color_mid_pos : C.DEFAULT_COLORS.midPos;
+            applyProviderSettings(res);
             F.fsize       = typeof res.cum_fsize === 'number' ? res.cum_fsize : 56;
 
             createFloat();

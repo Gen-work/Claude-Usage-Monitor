@@ -27,6 +27,18 @@
   const EMPTY_PETAL = '#c5c1bb';
 
   const DEFAULT_COLORS = { hi: '#d97757', mid: '#c96442', lo: '#e05252', midPos: 0.4 };
+  // Per-provider defaults: Claude keeps its terracotta, ChatGPT gets a violet
+  // that matches its accent. Both are user-adjustable per provider.
+  const PROVIDER_COLORS = {
+    claude:  DEFAULT_COLORS,
+    chatgpt: { hi: '#a78bfa', mid: '#8b5cf6', lo: '#e05252', midPos: 0.4 },
+  };
+  // Settings that are stored once per provider. Claude keeps the legacy
+  // un-suffixed keys so existing installs keep their customisation.
+  const PER_PROVIDER_KEYS = ['cum_halo_active', 'cum_halo_idle', 'cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos'];
+  function settingKey(base, provider) {
+    return (!provider || provider === 'claude') ? base : base + '_' + provider;
+  }
 
   // ── Providers ────────────────────────────────────────────────────────────
   const PROVIDERS = ['claude', 'chatgpt'];
@@ -271,7 +283,7 @@
   }
 
   root.CUM = {
-    PETALS, CW, EMPTY_PETAL, DEFAULT_COLORS,
+    PETALS, CW, EMPTY_PETAL, DEFAULT_COLORS, PROVIDER_COLORS, PER_PROVIDER_KEYS, settingKey,
     PROVIDERS, PROVIDER_LABEL, USAGE_KEY, detectProvider,
     LOCALE, localeOf, dirOf, guessLang, fontStack, applyLang,
     makeT, ICONS, escapeHtml,

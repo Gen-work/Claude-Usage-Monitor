@@ -12,6 +12,11 @@ const Col = { hi: D.hi, mid: D.mid, lo: D.lo };
 let colorMidPos = D.midPos;
 let countdownTimer = null;
 
+// Halo colours / intensities are stored per provider (see shared.js)
+const K  = (base) => C.settingKey(base, provider);
+const PC = () => C.PROVIDER_COLORS[provider] || D;
+const ALL_PROVIDER_KEYS = C.PROVIDERS.flatMap(p => C.PER_PROVIDER_KEYS.map(b => C.settingKey(b, p)));
+
 document.addEventListener('DOMContentLoaded', () => {
   buildLogos();
   $('icon-bat-full').innerHTML = C.ICONS.batFull;
@@ -51,11 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Halo settings ──────────────────────────────────────────────────────
   $('halo-active-slider').addEventListener('input', (e) => {
     $('halo-active-label').textContent = e.target.value + '%';
-    chrome.storage.local.set({ cum_halo_active: parseInt(e.target.value, 10) / 100 });
+    chrome.storage.local.set({ [K('cum_halo_active')]: parseInt(e.target.value, 10) / 100 });
   });
   $('halo-idle-slider').addEventListener('input', (e) => {
     $('halo-idle-label').textContent = e.target.value + '%';
-    chrome.storage.local.set({ cum_halo_idle: parseInt(e.target.value, 10) / 100 });
+    chrome.storage.local.set({ [K('cum_halo_idle')]: parseInt(e.target.value, 10) / 100 });
   });
 
   setupColorPicker();
@@ -68,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
       'cum_fenabled', 'cum_fopacity', 'cum_fwatermark', 'cum_fpos',
       'cum_halo_active', 'cum_halo_idle', 'cum_color_hi', 'cum_color_mid', 'cum_color_lo',
       'cum_fsize', 'cum_lang', 'cum_zen', 'cum_allpages', 'cum_color_mid_pos', 'cum_provider',
+      ...ALL_PROVIDER_KEYS,
     ], () => location.reload());
   });
 
@@ -97,6 +103,12 @@ function applyLang() {
     if (el.id === 'last-updated' && el.getAttribute('data-dynamic')) return;
     el.textContent = t(el.getAttribute('data-i18n'));
   });
+  updateHaloTitle();
+}
+
+function updateHaloTitle() {
+  const el = $('halo-title-label');
+  if (el) el.textContent = t('haloSection') + ' · ' + C.PROVIDER_LABEL[provider];
 }
 
 function buildLangButtons() {
@@ -131,7 +143,7 @@ function buildProviderSeg() {
     b.addEventListener('click', () => {
       provider = p;
       chrome.storage.local.set({ cum_provider: p });
-      buildProviderSeg(); loadUsage();
+      buildProviderSeg(); loadUsage(); loadSettings(); updateHaloTitle();
       try { chrome.runtime.sendMessage({ type: 'FORCE_FETCH', provider: p }, () => void chrome.runtime.lastError); } catch (e) {}
     });
     seg.appendChild(b);
@@ -150,10 +162,10 @@ function loadUsage() {
 }
 
 function barGradient(pct) {
+  // Follows the provider's configured colours so the popup matches the halo
   const tier = C.tierOf(pct, colorMidPos);
-  return tier === 'hi'  ? 'linear-gradient(90deg,#d97757,#e8a87c)'
-       : tier === 'mid' ? 'linear-gradient(90deg,#c96442,#d97757)'
-       :                  'linear-gradient(90deg,#e05252,#ff8a65)';
+  const c = tier === 'hi' ? Col.hi : tier === 'mid' ? Col.mid : Col.lo;
+  return `linear-gradient(90deg, ${c}, ${c}aa)`;
 }
 
 function resetText(entry) {
@@ -214,8 +226,7 @@ function showError(data) {
 
 function loadSettings() {
   chrome.storage.local.get(
-    ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_allpages',
-     'cum_halo_active','cum_halo_idle','cum_color_hi','cum_color_mid','cum_color_lo','cum_color_mid_pos'],
+    ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_allpages', ...ALL_PROVIDER_KEYS],
     (res) => {
       const enabled = !!res.cum_fenabled;
       const opacity = typeof res.cum_fopacity === 'number' ? res.cum_fopacity : 1.0;
@@ -225,17 +236,19 @@ function loadSettings() {
       $('opacity-slider').value = Math.round(opacity * 100);
       $('opacity-label').textContent = Math.round(opacity * 100) + '%';
 
-      const haloActive = typeof res.cum_halo_active === 'number' ? res.cum_halo_active : 1.0;
-      const haloIdle   = typeof res.cum_halo_idle   === 'number' ? res.cum_halo_idle   : 0.5;
+      const num = (k, d) => typeof res[K(k)] === 'number' ? res[K(k)] : d;
+      const haloActive = num('cum_halo_active', 1.0);
+      const haloIdle   = num('cum_halo_idle', 0.5);
       $('halo-active-slider').value = Math.round(haloActive * 100);
       $('halo-active-label').textContent = Math.round(haloActive * 100) + '%';
       $('halo-idle-slider').value = Math.round(haloIdle * 100);
       $('halo-idle-label').textContent = Math.round(haloIdle * 100) + '%';
 
-      Col.hi  = res.cum_color_hi  || D.hi;
-      Col.mid = res.cum_color_mid || D.mid;
-      Col.lo  = res.cum_color_lo  || D.lo;
-      colorMidPos = typeof res.cum_color_mid_pos === 'number' ? res.cum_color_mid_pos : D.midPos;
+      const P = PC();
+      Col.hi  = res[K('cum_color_hi')]  || P.hi;
+      Col.mid = res[K('cum_color_mid')] || P.mid;
+      Col.lo  = res[K('cum_color_lo')]  || P.lo;
+      colorMidPos = num('cum_color_mid_pos', P.midPos);
 
       $('color-hi').value = Col.hi;
       $('color-lo').value = Col.lo;
@@ -257,7 +270,8 @@ function updateGradientBar() {
 }
 
 function checkColorsDirty() {
-  const dirty = Col.hi !== D.hi || Col.mid !== D.mid || Col.lo !== D.lo || Math.abs(colorMidPos - D.midPos) > 0.01;
+  const P = PC();
+  const dirty = Col.hi !== P.hi || Col.mid !== P.mid || Col.lo !== P.lo || Math.abs(colorMidPos - P.midPos) > 0.01;
   $('btn-reset-colors').style.display = dirty ? '' : 'none';
 }
 
@@ -270,7 +284,7 @@ function setupColorPicker() {
     const input = $(id);
     input.addEventListener('input', (e) => {
       Col[slot] = e.target.value;
-      chrome.storage.local.set({ [key]: Col[slot] });
+      chrome.storage.local.set({ [K(key)]: Col[slot] });
       updateGradientBar(); checkColorsDirty();
     });
     input.addEventListener('mouseenter', showTip);
@@ -298,7 +312,7 @@ function setupMidDrag() {
     p = Math.max(0.05, Math.min(0.95, p));
     if (Math.abs(p - colorMidPos) > 0.008) moved = true;
     colorMidPos = p;
-    chrome.storage.local.set({ cum_color_mid_pos: p });
+    chrome.storage.local.set({ [K('cum_color_mid_pos')]: p });
     updateGradientBar(); checkColorsDirty();
   });
   const end = () => {
@@ -311,9 +325,10 @@ function setupMidDrag() {
 }
 
 function resetColors() {
-  Col.hi = D.hi; Col.mid = D.mid; Col.lo = D.lo; colorMidPos = D.midPos;
+  const P = PC();
+  Col.hi = P.hi; Col.mid = P.mid; Col.lo = P.lo; colorMidPos = P.midPos;
   $('color-hi').value = Col.hi; $('color-lo').value = Col.lo; $('color-mid-picker').value = Col.mid;
-  chrome.storage.local.remove(['cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos']);
+  chrome.storage.local.remove(['cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos'].map(K));
   updateGradientBar(); checkColorsDirty();
 }
 
