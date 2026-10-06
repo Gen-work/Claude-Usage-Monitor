@@ -76,7 +76,13 @@ async function getClaudeOrgId() {
   return null;
 }
 
+// One request per provider at a time: alarm, webRequest trigger and popup
+// FORCE_FETCH can fire together, and the quota endpoint needs no duplicates.
+const inFlight = { claude: false, chatgpt: false };
+
 async function fetchClaude() {
+  if (inFlight.claude) return;
+  inFlight.claude = true;
   try {
     const orgId = await getClaudeOrgId();
     if (!orgId) { await saveData('claude', { error: 'no_org' }); return; }
@@ -88,6 +94,8 @@ async function fetchClaude() {
     await saveData('claude', parsed);
   } catch (e) {
     await saveData('claude', { error: String(e && e.message || e) });
+  } finally {
+    inFlight.claude = false;
   }
 }
 
@@ -101,6 +109,8 @@ async function fetchClaude() {
 // page itself); when no tab is open we try from the worker directly.
 
 async function fetchChatgpt() {
+  if (inFlight.chatgpt) return;
+  inFlight.chatgpt = true;
   try {
     const tabs = await queryTabs(['*://chatgpt.com/*', '*://*.chatgpt.com/*']);
     for (const tab of tabs) {
@@ -122,6 +132,8 @@ async function fetchChatgpt() {
     await saveData('chatgpt', CUM.parseChatgptUsage(await r.json()));
   } catch (e) {
     await saveData('chatgpt', { error: String(e && e.message || e) });
+  } finally {
+    inFlight.chatgpt = false;
   }
 }
 

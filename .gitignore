@@ -25,3 +25,6 @@ build/
 
 # Claude Code worktrees (local only)
 .claude/worktrees/
+
+# Local extension packages (CI uploads them as artifacts)
+packages/

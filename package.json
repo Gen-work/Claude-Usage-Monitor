@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test test/unit.test.js",
     "check": "node --check shared.js && node --check i18n.js && node --check background.js && node --check content.js && node --check float_only.js && node --check popup.js",
-    "harness": "node test/serve.js"
+    "harness": "node test/serve.js",
+    "package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1"
   },
   "engines": {
     "node": ">=18"

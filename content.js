@@ -1024,17 +1024,25 @@
   // ═════════════════════════════════════════════════════════════════════════
   //  RAF LOOP — paused while the tab is hidden
   // ═════════════════════════════════════════════════════════════════════════
-  let lastSec = 0, rafOn = false;
+  // Layout reads (getBoundingClientRect) are throttled to ~10 Hz; anything
+  // that can move the composer marks the layout dirty for an immediate pass.
+  let lastSec = 0, lastLayoutTs = 0, rafOn = false, layoutDirty = true;
+  const markDirty = () => { layoutDirty = true; };
   function tick(ts) {
     if (!C.isCtxValid() || document.hidden) { rafOn = false; return; }
     requestAnimationFrame(tick);
-    reposition();
+    if (layoutDirty || ts - lastLayoutTs > 100) { lastLayoutTs = ts; layoutDirty = false; reposition(); }
     if (ts - lastSec > 980) { lastSec = ts; if (S.active) drawInline(); }
   }
   function startRaf() { if (!rafOn) { rafOn = true; requestAnimationFrame(tick); } }
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) { invalidateQueryCache(); startRaf(); pullData(); chatgptSelfReport(); }
+    if (!document.hidden) { invalidateQueryCache(); markDirty(); startRaf(); pullData(); chatgptSelfReport(); }
   });
+  window.addEventListener('resize', markDirty, { passive: true });
+  document.addEventListener('scroll', markDirty, { passive: true, capture: true });
+  document.addEventListener('input', markDirty, { passive: true, capture: true });
+  document.addEventListener('focusin', markDirty, { passive: true });
+  document.addEventListener('focusout', markDirty, { passive: true });
 
   function schedulePull() {
     if (!C.isCtxValid()) return;
@@ -1059,7 +1067,7 @@
   //  SPA SURVIVAL
   // ═════════════════════════════════════════════════════════════════════════
   function ensureElements() {
-    invalidateQueryCache();
+    invalidateQueryCache(); markDirty();
     if (!document.getElementById('cum-style')) { haloCssEl = null; injectStyles(); }
     if (!document.getElementById('cum-ov')) createOverlay();
     if (!document.getElementById('cum-float')) { createFloat(); createResizeHandle(); loadFloatSettings(); }

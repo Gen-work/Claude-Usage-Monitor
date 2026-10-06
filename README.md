@@ -63,7 +63,10 @@ test/           # 単体テスト（node --test）と視覚確認用ハーネス
 npm test          # shared.js の純粋関数（パーサ、色段階、i18n 網羅性など）
 npm run check     # 全スクリプトの構文チェック
 npm run harness   # http://localhost:8765/test/harness.html?site=claude|chatgpt|other&lang=ja&theme=light
+npm run package   # packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip を生成（Windows PowerShell）
 ```
+
+GitHub Actions（`.github/workflows/ci.yml`）が push / PR ごとに同じチェックを実行し、読み込み可能な zip を `Claude-Usage-Monitor-chrome-edge` アーティファクトとして保存する。
 
 ### インストール方法
 
@@ -132,7 +135,10 @@ test/           # Unit tests (node --test) + visual harness
 npm test          # pure helpers in shared.js (parsers, colour tiers, i18n completeness, …)
 npm run check     # syntax check of every script
 npm run harness   # http://localhost:8765/test/harness.html?site=claude|chatgpt|other&lang=ja&theme=light
+npm run package   # builds packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip (Windows PowerShell)
 ```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push / PR and uploads a ready-to-load zip as the `Claude-Usage-Monitor-chrome-edge` artifact.
 
 ### Installation
 
@@ -201,7 +207,10 @@ test/           # 单元测试（node --test）与可视化测试页
 npm test          # shared.js 纯函数（解析器、颜色分档、i18n 完整性等）
 npm run check     # 所有脚本语法检查
 npm run harness   # http://localhost:8765/test/harness.html?site=claude|chatgpt|other&lang=ja&theme=light
+npm run package   # 生成 packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip（Windows PowerShell）
 ```
+
+GitHub Actions（`.github/workflows/ci.yml`）在每次 push / PR 时运行同样的检查，并把可直接加载的 zip 作为 `Claude-Usage-Monitor-chrome-edge` 构件上传。
 
 ### 安装方法
 
