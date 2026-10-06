@@ -8,9 +8,13 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.PORT) || 8765;
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Private-Network': 'true' };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.css': 'text/css' };
 
 http.createServer((req, res) => {
+  if (req.method === 'OPTIONS') { // CORS / Private-Network-Access preflight (allows injecting from an https page)
+    res.writeHead(204, CORS); res.end(); return;
+  }
   const url = new URL(req.url, 'http://x');
   let rel = decodeURIComponent(url.pathname);
   if (rel === '/') rel = '/test/harness.html';
@@ -30,6 +34,6 @@ http.createServer((req, res) => {
   } else if (ext === '.html' || ext === '.js') {
     type += '; charset=utf-8';
   }
-  res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+  res.writeHead(200, Object.assign({ 'Content-Type': type, 'Cache-Control': 'no-store' }, CORS));
   res.end(body);
 }).listen(PORT, () => console.log(`harness: http://localhost:${PORT}/test/harness.html`));
