@@ -1,0 +1,14 @@
+{
+  "name": "claude-usage-monitor",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Chrome/Edge extension (MV3): ambient usage meter for Claude.ai and ChatGPT",
+  "scripts": {
+    "test": "node --test test/unit.test.js",
+    "check": "node --check shared.js && node --check i18n.js && node --check background.js && node --check content.js && node --check float_only.js && node --check popup.js",
+    "harness": "node test/serve.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

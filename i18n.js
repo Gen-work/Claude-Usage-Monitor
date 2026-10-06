@@ -1,13 +1,15 @@
 // i18n.js — shared translations for Claude Usage Monitor
-// LQA-reviewed for all languages
+// LQA-reviewed for all languages. File must stay UTF-8 (see .editorconfig).
 
-window.CUM_I18N = {
+(function (root) {
+root.CUM_I18N = {
   zh: {
     remaining: '剩余', newCycle: '新周期', haloLabel: '呼吸灯',
     hideIcon: '隐藏图标', watermark: '水印模式', opacity: '透明度', language: '语言',
     title: 'Claude 用量监控', loading: '正在加载…', loadingData: '读取用量数据…',
-    windowRemain: '5小时窗口剩余', resetLabel: '重置',
+    windowRemain: '5小时窗口剩余', weekRemain: '7天窗口剩余', resetLabel: '重置',
     errorMsg: '无法获取数据，请确认已登录 Claude.ai',
+    errorMsgChatgpt: '无法获取 ChatGPT 数据，请打开并登录 chatgpt.com',
     floatSection: '悬浮图标', enableFloat: '启用悬浮 Claude 图标',
     enableFloatSub: '在网页右下角显示用量饼图',
     watermarkLabel: '水印模式', watermarkSub: '鼠标穿透，不遮挡页面内容',
@@ -19,13 +21,15 @@ window.CUM_I18N = {
     resetAll: '重置所有设置',
     allPages: '跨页显示', allPagesSub: '在任意网页显示悬浮图标',
     midPos: '过渡位置', resetColors: '重置颜色', clickColor: '点击以自定义颜色',
+    source: '数据源', sessionShort: '5小时', weekShort: '7天', zenExit: '点击退出',
   },
   en: {
     remaining: 'left', newCycle: 'New cycle', haloLabel: 'Halo glow',
     hideIcon: 'Hide icon', watermark: 'Watermark', opacity: 'Opacity', language: 'Language',
     title: 'Claude Usage Monitor', loading: 'Loading…', loadingData: 'Loading usage data…',
-    windowRemain: '5h window remaining', resetLabel: 'Reset',
+    windowRemain: '5h window remaining', weekRemain: '7-day window remaining', resetLabel: 'Reset',
     errorMsg: 'Cannot fetch data. Please log in to Claude.ai',
+    errorMsgChatgpt: 'Cannot fetch ChatGPT data. Open and log in to chatgpt.com',
     floatSection: 'Float icon', enableFloat: 'Enable floating icon',
     enableFloatSub: 'Show usage pie chart at bottom right',
     watermarkLabel: 'Watermark mode', watermarkSub: 'Click-through, won\'t block content',
@@ -37,13 +41,15 @@ window.CUM_I18N = {
     resetAll: 'Reset all settings',
     allPages: 'All pages', allPagesSub: 'Show icon on any webpage',
     midPos: 'Mid point', resetColors: 'Reset colors', clickColor: 'Click to customize color',
+    source: 'Source', sessionShort: '5h', weekShort: '7d', zenExit: 'Click to exit',
   },
   ja: {
     remaining: '残り', newCycle: '新サイクル', haloLabel: 'グロー効果',
     hideIcon: 'アイコンを非表示', watermark: '透過モード', opacity: '不透明度', language: '言語',
     title: 'Claude 使用量モニター', loading: '読み込み中…', loadingData: '使用量データを取得中…',
-    windowRemain: '5時間枠の残り', resetLabel: 'リセット',
+    windowRemain: '5時間枠の残り', weekRemain: '7日間枠の残り', resetLabel: 'リセット',
     errorMsg: 'データを取得できません。Claude.ai にログインしてください',
+    errorMsgChatgpt: 'ChatGPT のデータを取得できません。chatgpt.com を開いてログインしてください',
     floatSection: 'フローティングアイコン', enableFloat: 'フローティングアイコンを有効化',
     enableFloatSub: '右下に使用量チャートを表示',
     watermarkLabel: '透過モード', watermarkSub: 'クリック透過でコンテンツを遮りません',
@@ -55,13 +61,15 @@ window.CUM_I18N = {
     resetAll: 'すべての設定をリセット',
     allPages: '全ページ表示', allPagesSub: '任意のページにアイコンを表示',
     midPos: '中間位置', resetColors: '色をリセット', clickColor: 'クリックして色をカスタマイズ',
+    source: 'データソース', sessionShort: '5時間', weekShort: '7日', zenExit: 'クリックで終了',
   },
   ko: {
     remaining: '남음', newCycle: '새 주기', haloLabel: '글로우 효과',
     hideIcon: '아이콘 숨기기', watermark: '투과 모드', opacity: '불투명도', language: '언어',
     title: 'Claude 사용량 모니터', loading: '로딩 중…', loadingData: '사용량 데이터 로딩 중…',
-    windowRemain: '5시간 창 남음', resetLabel: '리셋',
+    windowRemain: '5시간 창 남음', weekRemain: '7일 창 남음', resetLabel: '리셋',
     errorMsg: '데이터를 가져올 수 없습니다. Claude.ai에 로그인하세요',
+    errorMsgChatgpt: 'ChatGPT 데이터를 가져올 수 없습니다. chatgpt.com을 열고 로그인하세요',
     floatSection: '플로팅 아이콘', enableFloat: '플로팅 아이콘 활성화',
     enableFloatSub: '우하단에 사용량 차트 표시',
     watermarkLabel: '투과 모드', watermarkSub: '클릭 투과, 콘텐츠를 가리지 않음',
@@ -73,13 +81,15 @@ window.CUM_I18N = {
     resetAll: '모든 설정 초기화',
     allPages: '전체 페이지', allPagesSub: '모든 웹페이지에 아이콘 표시',
     midPos: '중간 위치', resetColors: '색상 초기화', clickColor: '클릭하여 색상 커스터마이즈',
+    source: '데이터 소스', sessionShort: '5시간', weekShort: '7일', zenExit: '클릭하여 종료',
   },
   fr: {
     remaining: 'restant', newCycle: 'Nouveau cycle', haloLabel: 'Halo lumineux',
     hideIcon: "Masquer l'icône", watermark: 'Mode transparent', opacity: 'Opacité', language: 'Langue',
     title: "Moniteur d'utilisation Claude", loading: 'Chargement…', loadingData: 'Chargement des données…',
-    windowRemain: 'Restant (5h)', resetLabel: 'Réinitialisation',
+    windowRemain: 'Restant (5 h)', weekRemain: 'Restant (7 jours)', resetLabel: 'Réinitialisation',
     errorMsg: 'Données inaccessibles. Connectez-vous à Claude.ai',
+    errorMsgChatgpt: 'Données ChatGPT inaccessibles. Ouvrez chatgpt.com et connectez-vous',
     floatSection: 'Icône flottante', enableFloat: "Activer l'icône flottante",
     enableFloatSub: 'Afficher le graphique en bas à droite',
     watermarkLabel: 'Mode transparent', watermarkSub: "Clic traversant, n'obstrue pas le contenu",
@@ -91,13 +101,15 @@ window.CUM_I18N = {
     resetAll: 'Réinitialiser tous les paramètres',
     allPages: 'Toutes pages', allPagesSub: "Afficher l'icône sur n'importe quelle page",
     midPos: 'Point milieu', resetColors: 'Réinitialiser les couleurs', clickColor: 'Cliquer pour personnaliser',
+    source: 'Source', sessionShort: '5 h', weekShort: '7 j', zenExit: 'Cliquer pour quitter',
   },
   ru: {
     remaining: 'осталось', newCycle: 'Новый цикл', haloLabel: 'Свечение',
     hideIcon: 'Скрыть иконку', watermark: 'Режим прозрачности', opacity: 'Прозрачность', language: 'Язык',
     title: 'Монитор использования Claude', loading: 'Загрузка…', loadingData: 'Загрузка данных…',
-    windowRemain: 'Осталось (5ч)', resetLabel: 'Сброс',
+    windowRemain: 'Осталось (5 ч)', weekRemain: 'Осталось (7 дней)', resetLabel: 'Сброс',
     errorMsg: 'Не удалось получить данные. Войдите на Claude.ai',
+    errorMsgChatgpt: 'Не удалось получить данные ChatGPT. Откройте chatgpt.com и войдите',
     floatSection: 'Плавающая иконка', enableFloat: 'Включить плавающую иконку',
     enableFloatSub: 'Показать диаграмму в правом нижнем углу',
     watermarkLabel: 'Режим прозрачности', watermarkSub: 'Клик сквозной, не перекрывает контент',
@@ -109,13 +121,15 @@ window.CUM_I18N = {
     resetAll: 'Сбросить все настройки',
     allPages: 'Все страницы', allPagesSub: 'Показывать иконку на любой странице',
     midPos: 'Средняя позиция', resetColors: 'Сбросить цвета', clickColor: 'Нажмите для настройки цвета',
+    source: 'Источник', sessionShort: '5 ч', weekShort: '7 дн', zenExit: 'Нажмите для выхода',
   },
   es: {
     remaining: 'restante', newCycle: 'Nuevo ciclo', haloLabel: 'Halo luminoso',
     hideIcon: 'Ocultar icono', watermark: 'Modo transparente', opacity: 'Opacidad', language: 'Idioma',
     title: 'Monitor de uso de Claude', loading: 'Cargando…', loadingData: 'Cargando datos de uso…',
-    windowRemain: 'Restante (5h)', resetLabel: 'Restablecer',
+    windowRemain: 'Restante (5 h)', weekRemain: 'Restante (7 días)', resetLabel: 'Restablecer',
     errorMsg: 'No se pueden obtener datos. Inicia sesión en Claude.ai',
+    errorMsgChatgpt: 'No se pueden obtener datos de ChatGPT. Abre chatgpt.com e inicia sesión',
     floatSection: 'Icono flotante', enableFloat: 'Activar icono flotante',
     enableFloatSub: 'Mostrar gráfico en la esquina inferior derecha',
     watermarkLabel: 'Modo transparente', watermarkSub: 'Clic transparente, no bloquea el contenido',
@@ -127,13 +141,15 @@ window.CUM_I18N = {
     resetAll: 'Restablecer todos los ajustes',
     allPages: 'Todas las páginas', allPagesSub: 'Mostrar icono en cualquier página web',
     midPos: 'Punto medio', resetColors: 'Restablecer colores', clickColor: 'Clic para personalizar color',
+    source: 'Fuente', sessionShort: '5 h', weekShort: '7 d', zenExit: 'Clic para salir',
   },
   ar: {
     remaining: 'متبقي', newCycle: 'دورة جديدة', haloLabel: 'التوهج',
     hideIcon: 'إخفاء الأيقونة', watermark: 'وضع الشفافية', opacity: 'الشفافية', language: 'اللغة',
     title: 'مراقب استخدام Claude', loading: 'جارٍ التحميل…', loadingData: 'جارٍ تحميل البيانات…',
-    windowRemain: 'متبقي من نافذة 5 ساعات', resetLabel: 'إعادة التعيين',
+    windowRemain: 'متبقي من نافذة 5 ساعات', weekRemain: 'متبقي من نافذة 7 أيام', resetLabel: 'إعادة التعيين',
     errorMsg: 'تعذّر جلب البيانات. يرجى تسجيل الدخول إلى Claude.ai',
+    errorMsgChatgpt: 'تعذّر جلب بيانات ChatGPT. افتح chatgpt.com وسجّل الدخول',
     floatSection: 'أيقونة عائمة', enableFloat: 'تفعيل الأيقونة العائمة',
     enableFloatSub: 'عرض مخطط الاستخدام في الزاوية السفلية اليمنى',
     watermarkLabel: 'وضع الشفافية', watermarkSub: 'نقر نافذ، لا يحجب المحتوى',
@@ -145,10 +161,11 @@ window.CUM_I18N = {
     resetAll: 'إعادة تعيين جميع الإعدادات',
     allPages: 'جميع الصفحات', allPagesSub: 'عرض الأيقونة على أي صفحة ويب',
     midPos: 'نقطة المنتصف', resetColors: 'إعادة تعيين الألوان', clickColor: 'انقر لتخصيص اللون',
+    source: 'المصدر', sessionShort: '5 س', weekShort: '7 أيام', zenExit: 'انقر للخروج',
   },
 };
 
-window.CUM_LANGS = [
+root.CUM_LANGS = [
   { code: 'zh', label: '中文' },
   { code: 'en', label: 'English' },
   { code: 'fr', label: 'Français' },
@@ -158,3 +175,4 @@ window.CUM_LANGS = [
   { code: 'ja', label: '日本語' },
   { code: 'ko', label: '한국어' },
 ];
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
