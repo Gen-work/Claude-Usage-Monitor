@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-and-package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Syntax check
+        run: npm run check
+
+      - name: Validate manifest
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest ok')"
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Legacy regression scripts
+        run: |
+          node test/legacy/test_bugs.js
+          node test/legacy/test_fixes.js
+
+      - name: Package extension
+        shell: pwsh
+        run: ./scripts/package.ps1
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Claude-Usage-Monitor-chrome-edge
+          path: packages/*.zip
+          if-no-files-found: error

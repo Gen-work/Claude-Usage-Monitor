@@ -21,13 +21,13 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://claude.ai/*", "*://chatgpt.com/*", "*://*.chatgpt.com/*"],
+      "matches": ["*://claude.ai/*", "*://*.claude.ai/*", "*://chatgpt.com/*", "*://*.chatgpt.com/*"],
       "js": ["shared.js", "i18n.js", "content.js"],
       "run_at": "document_idle"
     },
     {
       "matches": ["<all_urls>"],
-      "exclude_matches": ["*://claude.ai/*", "*://chatgpt.com/*", "*://*.chatgpt.com/*"],
+      "exclude_matches": ["*://claude.ai/*", "*://*.claude.ai/*", "*://chatgpt.com/*", "*://*.chatgpt.com/*"],
       "js": ["shared.js", "i18n.js", "float_only.js"],
       "run_at": "document_idle"
     }
