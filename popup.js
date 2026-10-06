@@ -1,55 +1,68 @@
-// popup.js — reads cached usage, manages float + halo settings, i18n, zen mode
+// popup.js — reads cached usage per provider, manages float + halo settings, i18n, zen mode
 
+const C = self.CUM;
 const $ = id => document.getElementById(id);
 
-let lang = 'zh';
-function t(k) { return (window.CUM_I18N[lang] || {})[k] || window.CUM_I18N.zh[k] || k; }
+let lang = C.guessLang(navigator.languages || [navigator.language]);
+const t = C.makeT(() => lang);
 
-const DEFAULTS = { hi: '#d97757', mid: '#c96442', lo: '#e05252', midPos: 0.4 };
-const C = { hi: DEFAULTS.hi, mid: DEFAULTS.mid, lo: DEFAULTS.lo };
-let colorMidPos = DEFAULTS.midPos;
+let provider = 'claude';
+const D = C.DEFAULT_COLORS;
+const Col = { hi: D.hi, mid: D.mid, lo: D.lo };
+let colorMidPos = D.midPos;
+let countdownTimer = null;
+
+// Halo colours / intensities are stored per provider (see shared.js)
+const K  = (base) => C.settingKey(base, provider);
+const PC = () => C.PROVIDER_COLORS[provider] || D;
+const ALL_PROVIDER_KEYS = C.PROVIDERS.flatMap(p => C.PER_PROVIDER_KEYS.map(b => C.settingKey(b, p)));
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadLang();
-  loadUsage();
-  loadSettings();
-  loadZen();
+  buildLogos();
+  $('icon-bat-full').innerHTML = C.ICONS.batFull;
+  $('icon-bat-low').innerHTML  = C.ICONS.batLow;
+
+  chrome.storage.local.get(['cum_lang', 'cum_provider', 'cum_zen'], (res) => {
+    if (res.cum_lang) lang = res.cum_lang;
+    provider = C.USAGE_KEY[res.cum_provider] ? res.cum_provider : 'claude';
+    applyLang();
+    buildLangButtons();
+    buildProviderSeg();
+    loadUsage();
+    loadSettings();
+    if (res.cum_zen) applyZen(true);
+  });
+
+  // Live refresh while the popup is open
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (C.USAGE_KEY[provider] in changes) loadUsage();
+  });
+  // Ask the worker for fresh numbers right away
+  try { chrome.runtime.sendMessage({ type: 'FORCE_FETCH' }, () => void chrome.runtime.lastError); } catch (e) {}
 
   // ── Float settings ──────────────────────────────────────────────────────
   $('tog-float').addEventListener('change', (e) => {
-    const on = e.target.checked;
-    chrome.storage.local.set({ cum_fenabled: on });
-    setFloatControlsEnabled(on);
+    chrome.storage.local.set({ cum_fenabled: e.target.checked });
+    setFloatControlsEnabled(e.target.checked);
   });
-
-  $('tog-wm').addEventListener('change', (e) => {
-    chrome.storage.local.set({ cum_fwatermark: e.target.checked });
-  });
-
-  $('tog-allpages').addEventListener('change', (e) => {
-    chrome.storage.local.set({ cum_allpages: e.target.checked });
-  });
-
+  $('tog-wm').addEventListener('change', (e) => chrome.storage.local.set({ cum_fwatermark: e.target.checked }));
+  $('tog-allpages').addEventListener('change', (e) => chrome.storage.local.set({ cum_allpages: e.target.checked }));
   $('opacity-slider').addEventListener('input', (e) => {
-    const v = parseInt(e.target.value) / 100;
     $('opacity-label').textContent = e.target.value + '%';
-    chrome.storage.local.set({ cum_fopacity: v });
+    chrome.storage.local.set({ cum_fopacity: parseInt(e.target.value, 10) / 100 });
   });
 
   // ── Halo settings ──────────────────────────────────────────────────────
   $('halo-active-slider').addEventListener('input', (e) => {
-    const v = parseInt(e.target.value) / 100;
     $('halo-active-label').textContent = e.target.value + '%';
-    chrome.storage.local.set({ cum_halo_active: v });
+    chrome.storage.local.set({ [K('cum_halo_active')]: parseInt(e.target.value, 10) / 100 });
   });
-
   $('halo-idle-slider').addEventListener('input', (e) => {
-    const v = parseInt(e.target.value) / 100;
     $('halo-idle-label').textContent = e.target.value + '%';
-    chrome.storage.local.set({ cum_halo_idle: v });
+    chrome.storage.local.set({ [K('cum_halo_idle')]: parseInt(e.target.value, 10) / 100 });
   });
 
-  // ── Color pickers + mid-drag ───────────────────────────────────────────
   setupColorPicker();
   setupMidDrag();
   $('btn-reset-colors').addEventListener('click', resetColors);
@@ -59,66 +72,107 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.remove([
       'cum_fenabled', 'cum_fopacity', 'cum_fwatermark', 'cum_fpos',
       'cum_halo_active', 'cum_halo_idle', 'cum_color_hi', 'cum_color_mid', 'cum_color_lo',
-      'cum_fsize', 'cum_lang', 'cum_zen', 'cum_allpages', 'cum_color_mid_pos',
-    ], () => {
-      chrome.storage.local.set({ cum_lang: 'en' });
-      location.reload();
-    });
+      'cum_fsize', 'cum_lang', 'cum_zen', 'cum_allpages', 'cum_color_mid_pos', 'cum_provider',
+      ...ALL_PROVIDER_KEYS,
+    ], () => location.reload());
   });
 
-  // ── Zen mode toggle ────────────────────────────────────────────────────
+  // ── Zen mode ───────────────────────────────────────────────────────────
   $('zen-toggle').addEventListener('click', () => toggleZen(true));
+  $('zen-toggle').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') toggleZen(true); });
   $('zen-view').addEventListener('click', () => toggleZen(false));
 });
 
-// ── i18n ──────────────────────────────────────────────────────────────────
-
-function loadLang() {
-  chrome.storage.local.get('cum_lang', (res) => {
-    lang = res.cum_lang || 'zh';
-    applyI18n();
-    buildLangButtons();
-  });
+// ── Logos (built from shared petal geometry; no duplicated path data) ──────
+function buildLogos() {
+  for (const id of ['zen-toggle', 'zen-logo']) {
+    const host = $(id);
+    const { svg } = C.buildPetalSvg(document, 'currentColor');
+    host.innerHTML = svg.innerHTML;
+  }
 }
 
-function applyI18n() {
+// ── i18n / direction / fonts ───────────────────────────────────────────────
+
+function applyLang() {
+  const html = document.documentElement;
+  html.setAttribute('lang', C.localeOf(lang));
+  html.setAttribute('dir', C.dirOf(lang));
+  document.body.style.fontFamily = C.fontStack(lang);
   document.querySelectorAll('[data-i18n]').forEach((el) => {
-    const key = el.getAttribute('data-i18n');
-    if (el.id === 'last-updated' && el.textContent !== t('loading') && el.getAttribute('data-dynamic')) return;
-    el.textContent = t(key);
+    if (el.id === 'last-updated' && el.getAttribute('data-dynamic')) return;
+    el.textContent = t(el.getAttribute('data-i18n'));
   });
+  updateHaloTitle();
+}
+
+function updateHaloTitle() {
+  const el = $('halo-title-label');
+  if (el) el.textContent = t('haloSection') + ' · ' + C.PROVIDER_LABEL[provider];
 }
 
 function buildLangButtons() {
   const row = $('lang-row');
-  if (!row) return;
   row.innerHTML = '';
-  window.CUM_LANGS.forEach((l) => {
+  (self.CUM_LANGS || []).forEach((l) => {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'lang-btn' + (lang === l.code ? ' active' : '');
     btn.textContent = l.label;
+    btn.setAttribute('lang', C.localeOf(l.code));
     btn.addEventListener('click', () => {
       lang = l.code;
       chrome.storage.local.set({ cum_lang: l.code });
-      applyI18n();
-      buildLangButtons();
-      loadUsage();
+      applyLang(); buildLangButtons(); buildProviderSeg(); loadUsage();
     });
     row.appendChild(btn);
   });
 }
 
-// ── Usage display ─────────────────────────────────────────────────────────
+// ── Provider switch ────────────────────────────────────────────────────────
+
+function buildProviderSeg() {
+  const seg = $('provider-seg');
+  seg.innerHTML = '';
+  C.PROVIDERS.forEach((p) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'tab');
+    b.className = provider === p ? 'active' : '';
+    b.setAttribute('aria-selected', provider === p ? 'true' : 'false');
+    b.textContent = C.PROVIDER_LABEL[p];
+    b.addEventListener('click', () => {
+      provider = p;
+      chrome.storage.local.set({ cum_provider: p });
+      buildProviderSeg(); loadUsage(); loadSettings(); updateHaloTitle();
+      try { chrome.runtime.sendMessage({ type: 'FORCE_FETCH', provider: p }, () => void chrome.runtime.lastError); } catch (e) {}
+    });
+    seg.appendChild(b);
+  });
+}
+
+// ── Usage display ──────────────────────────────────────────────────────────
 
 function loadUsage() {
-  chrome.storage.local.get('usageData', (res) => {
-    const data = res.usageData;
-    if (!data || data.error || typeof data.remainPct !== 'number') {
-      showError();
-      return;
-    }
+  const key = C.USAGE_KEY[provider];
+  chrome.storage.local.get(key, (res) => {
+    const data = res[key];
+    if (!C.isUsable(data)) { showError(data); return; }
     showUsage(data);
   });
+}
+
+function barGradient(pct) {
+  // Follows the provider's configured colours so the popup matches the halo
+  const tier = C.tierOf(pct, colorMidPos);
+  const c = tier === 'hi' ? Col.hi : tier === 'mid' ? Col.mid : Col.lo;
+  return `linear-gradient(90deg, ${c}, ${c}aa)`;
+}
+
+function resetText(entry) {
+  const ms = entry ? (entry.resetMs || 0) : 0;
+  const now = Date.now();
+  if (ms > now) return C.fmtCountdown(ms - now);
+  return ms > 0 ? t('newCycle') : '—';
 }
 
 function showUsage(data) {
@@ -126,204 +180,164 @@ function showUsage(data) {
   $('error-body').style.display = 'none';
   $('usage-body').style.display = 'block';
 
-  const p = data.remainPct;
-  $('pct-val').textContent = p + '%';
-  $('prog').style.width    = p + '%';
-  $('prog').style.background = p > 60
-    ? 'linear-gradient(90deg,#d97757,#e8a87c)'
-    : p > 30
-      ? 'linear-gradient(90deg,#c96442,#d97757)'
-      : 'linear-gradient(90deg,#e05252,#ff8a65)';
+  const session = data.session || { remainPct: data.remainPct, resetMs: data.resetMs };
+  const render = () => {
+    $('pct-val').textContent = session.remainPct + '%';
+    $('prog').style.width = session.remainPct + '%';
+    $('prog').style.background = barGradient(session.remainPct);
+    $('reset-val').textContent = resetText(session);
 
-  const ms = data.session?.resetMs ?? data.resetMs ?? 0;
-  const now = Date.now();
-  if (ms > 0 && ms > now) {
-    const diff = ms - now;
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    $('reset-val').textContent =
-      String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-  } else {
-    $('reset-val').textContent = ms > 0 ? t('newCycle') : '—';
-  }
+    if (data.weekly && typeof data.weekly.remainPct === 'number') {
+      $('week-block').style.display = '';
+      $('week-pct').textContent = data.weekly.remainPct + '%';
+      $('week-prog').style.width = data.weekly.remainPct + '%';
+      $('week-prog').style.background = barGradient(data.weekly.remainPct);
+      $('week-reset').textContent = resetText(data.weekly);
+    } else {
+      $('week-block').style.display = 'none';
+    }
+  };
+  render();
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(render, 1000);
 
-  const ts = data.ts;
+  const note = $('stale-note');
+  note.style.display = data.stale ? 'block' : 'none';
+  note.textContent = data.stale ? '⚠ ' + t(provider === 'chatgpt' ? 'errorMsgChatgpt' : 'errorMsg') : '';
+
   const el = $('last-updated');
   el.setAttribute('data-dynamic', '1');
-  el.textContent = ts
-    ? t('updatedAt') + ' ' + new Date(ts).toLocaleTimeString(
-        lang === 'ja' ? 'ja-JP' : lang === 'ko' ? 'ko-KR' : lang === 'en' ? 'en-US' : 'zh-CN',
-        { hour:'2-digit', minute:'2-digit' })
-    : '';
+  el.textContent = data.ts ? `${C.PROVIDER_LABEL[provider]} · ${t('updatedAt')} ${C.fmtClock(data.ts, lang, false)}` : '';
 }
 
-function showError() {
+function showError(data) {
+  clearInterval(countdownTimer);
   $('loading').style.display    = 'none';
   $('usage-body').style.display = 'none';
-  $('error-body').style.display = 'block';
+  const err = $('error-body');
+  err.style.display = 'block';
+  err.textContent = t(provider === 'chatgpt' ? 'errorMsgChatgpt' : 'errorMsg');
+  const el = $('last-updated');
+  el.setAttribute('data-dynamic', '1');
+  el.textContent = C.PROVIDER_LABEL[provider] + (data && data.error ? ' · ' + data.error : '');
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────
+// ── Settings ───────────────────────────────────────────────────────────────
 
 function loadSettings() {
   chrome.storage.local.get(
-    ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_allpages',
-     'cum_halo_active','cum_halo_idle','cum_color_hi','cum_color_mid','cum_color_lo','cum_color_mid_pos'],
+    ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_allpages', ...ALL_PROVIDER_KEYS],
     (res) => {
-      const enabled   = !!res.cum_fenabled;
-      const opacity   = typeof res.cum_fopacity === 'number' ? res.cum_fopacity : 1.0;
-      const watermark = !!res.cum_fwatermark;
-
+      const enabled = !!res.cum_fenabled;
+      const opacity = typeof res.cum_fopacity === 'number' ? res.cum_fopacity : 1.0;
       $('tog-float').checked    = enabled;
-      $('tog-wm').checked       = watermark;
+      $('tog-wm').checked       = !!res.cum_fwatermark;
       $('tog-allpages').checked = !!res.cum_allpages;
       $('opacity-slider').value = Math.round(opacity * 100);
       $('opacity-label').textContent = Math.round(opacity * 100) + '%';
 
-      const haloActive = typeof res.cum_halo_active === 'number' ? res.cum_halo_active : 1.0;
-      const haloIdle   = typeof res.cum_halo_idle   === 'number' ? res.cum_halo_idle   : 0.5;
+      const num = (k, d) => typeof res[K(k)] === 'number' ? res[K(k)] : d;
+      const haloActive = num('cum_halo_active', 1.0);
+      const haloIdle   = num('cum_halo_idle', 0.5);
       $('halo-active-slider').value = Math.round(haloActive * 100);
       $('halo-active-label').textContent = Math.round(haloActive * 100) + '%';
       $('halo-idle-slider').value = Math.round(haloIdle * 100);
       $('halo-idle-label').textContent = Math.round(haloIdle * 100) + '%';
 
-      C.hi  = res.cum_color_hi  || DEFAULTS.hi;
-      C.mid = res.cum_color_mid || DEFAULTS.mid;
-      C.lo  = res.cum_color_lo  || DEFAULTS.lo;
-      colorMidPos = typeof res.cum_color_mid_pos === 'number' ? res.cum_color_mid_pos : DEFAULTS.midPos;
+      const P = PC();
+      Col.hi  = res[K('cum_color_hi')]  || P.hi;
+      Col.mid = res[K('cum_color_mid')] || P.mid;
+      Col.lo  = res[K('cum_color_lo')]  || P.lo;
+      colorMidPos = num('cum_color_mid_pos', P.midPos);
 
-      $('color-hi').value = C.hi;
-      $('color-lo').value = C.lo;
-      $('color-mid-picker').value = C.mid;
+      $('color-hi').value = Col.hi;
+      $('color-lo').value = Col.lo;
+      $('color-mid-picker').value = Col.mid;
 
-      updateGradientBar();
-      checkColorsDirty();
-      setFloatControlsEnabled(enabled);
+      updateGradientBar(); checkColorsDirty(); setFloatControlsEnabled(enabled);
     }
   );
 }
 
 function setFloatControlsEnabled(on) {
-  ['watermark-row', 'allpages-row', 'opacity-row'].forEach((id) => {
-    const el = $(id);
-    el.style.opacity      = on ? '1' : '.45';
-    el.style.pointerEvents = on ? 'auto' : 'none';
-  });
+  ['watermark-row', 'allpages-row', 'opacity-row'].forEach((id) => $(id).classList.toggle('disabled', !on));
 }
 
 function updateGradientBar() {
-  const bar = $('gradient-bar');
-  if (!bar) return;
   const p = colorMidPos * 100;
-  bar.style.background = `linear-gradient(to right, ${C.hi}, ${C.mid} ${p}%, ${C.lo})`;
-  const handle = $('gmid-handle');
-  if (handle) handle.style.left = p + '%';
+  $('gradient-bar').style.background = `linear-gradient(to right, ${Col.hi}, ${Col.mid} ${p}%, ${Col.lo})`;
+  $('gmid-handle').style.left = p + '%';
 }
 
 function checkColorsDirty() {
-  const dirty = C.hi !== DEFAULTS.hi || C.mid !== DEFAULTS.mid ||
-                C.lo !== DEFAULTS.lo || Math.abs(colorMidPos - DEFAULTS.midPos) > 0.01;
-  const btn = $('btn-reset-colors');
-  if (btn) btn.style.display = dirty ? '' : 'none';
+  const P = PC();
+  const dirty = Col.hi !== P.hi || Col.mid !== P.mid || Col.lo !== P.lo || Math.abs(colorMidPos - P.midPos) > 0.01;
+  $('btn-reset-colors').style.display = dirty ? '' : 'none';
 }
 
 function setupColorPicker() {
   const tip = $('color-tip');
-  const showTip = () => { if (tip) tip.classList.add('on'); };
-  const hideTip = () => { if (tip) tip.classList.remove('on'); };
+  const showTip = () => tip.classList.add('on');
+  const hideTip = () => tip.classList.remove('on');
 
-  // Hi stop — native input, direct click opens picker
-  const hiIn = $('color-hi');
-  hiIn.addEventListener('input', (e) => {
-    C.hi = e.target.value;
-    chrome.storage.local.set({ cum_color_hi: C.hi });
-    updateGradientBar(); checkColorsDirty();
-  });
-  hiIn.addEventListener('mouseenter', showTip);
-  hiIn.addEventListener('mouseleave', hideTip);
-
-  // Lo stop — native input, direct click opens picker
-  const loIn = $('color-lo');
-  loIn.addEventListener('input', (e) => {
-    C.lo = e.target.value;
-    chrome.storage.local.set({ cum_color_lo: C.lo });
-    updateGradientBar(); checkColorsDirty();
-  });
-  loIn.addEventListener('mouseenter', showTip);
-  loIn.addEventListener('mouseleave', hideTip);
-
-  // Mid picker — hidden input, triggered by mid handle click
-  $('color-mid-picker').addEventListener('input', (e) => {
-    C.mid = e.target.value;
-    chrome.storage.local.set({ cum_color_mid: C.mid });
-    updateGradientBar(); checkColorsDirty();
-  });
+  const bind = (id, key, slot) => {
+    const input = $(id);
+    input.addEventListener('input', (e) => {
+      Col[slot] = e.target.value;
+      chrome.storage.local.set({ [K(key)]: Col[slot] });
+      updateGradientBar(); checkColorsDirty();
+    });
+    input.addEventListener('mouseenter', showTip);
+    input.addEventListener('mouseleave', hideTip);
+  };
+  bind('color-hi', 'cum_color_hi', 'hi');
+  bind('color-lo', 'cum_color_lo', 'lo');
+  bind('color-mid-picker', 'cum_color_mid', 'mid');
 }
 
 function setupMidDrag() {
-  const bar = $('gradient-bar');
-  const handle = $('gmid-handle');
-  const tip = $('color-tip');
-  if (!bar || !handle) return;
-  let mdDragging = false, mdMoved = false;
+  const bar = $('gradient-bar'), handle = $('gmid-handle'), tip = $('color-tip');
+  let dragging = false, moved = false;
 
-  handle.addEventListener('mouseenter', () => { if (tip) tip.classList.add('on'); });
-  handle.addEventListener('mouseleave', () => { if (tip) tip.classList.remove('on'); });
-
+  handle.addEventListener('mouseenter', () => tip.classList.add('on'));
+  handle.addEventListener('mouseleave', () => tip.classList.remove('on'));
   handle.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    mdDragging = true; mdMoved = false;
-    handle.setPointerCapture(e.pointerId);
-    handle.classList.add('dragging');
+    e.preventDefault(); dragging = true; moved = false;
+    handle.setPointerCapture(e.pointerId); handle.classList.add('dragging');
   });
   handle.addEventListener('pointermove', (e) => {
-    if (!mdDragging) return;
+    if (!dragging) return;
     const br = bar.getBoundingClientRect();
     let p = (e.clientX - br.left) / br.width;
     p = Math.max(0.05, Math.min(0.95, p));
-    if (Math.abs(p - colorMidPos) > 0.008) mdMoved = true;
+    if (Math.abs(p - colorMidPos) > 0.008) moved = true;
     colorMidPos = p;
-    chrome.storage.local.set({ cum_color_mid_pos: p });
+    chrome.storage.local.set({ [K('cum_color_mid_pos')]: p });
     updateGradientBar(); checkColorsDirty();
   });
-  handle.addEventListener('pointerup', () => {
-    if (!mdMoved) {
-      const picker = $('color-mid-picker');
-      if (picker) { picker.value = C.mid; picker.click(); }
-    }
-    mdDragging = false;
-    handle.classList.remove('dragging');
-  });
-  handle.addEventListener('pointercancel', () => {
-    mdDragging = false;
-    handle.classList.remove('dragging');
-  });
+  const end = () => {
+    if (!dragging) return;
+    if (!moved) { const picker = $('color-mid-picker'); picker.value = Col.mid; picker.click(); }
+    dragging = false; handle.classList.remove('dragging');
+  };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', () => { dragging = false; handle.classList.remove('dragging'); });
 }
 
 function resetColors() {
-  C.hi = DEFAULTS.hi; C.mid = DEFAULTS.mid; C.lo = DEFAULTS.lo;
-  colorMidPos = DEFAULTS.midPos;
-  $('color-hi').value = C.hi;
-  $('color-lo').value = C.lo;
-  $('color-mid-picker').value = C.mid;
-  chrome.storage.local.remove(['cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos']);
+  const P = PC();
+  Col.hi = P.hi; Col.mid = P.mid; Col.lo = P.lo; colorMidPos = P.midPos;
+  $('color-hi').value = Col.hi; $('color-lo').value = Col.lo; $('color-mid-picker').value = Col.mid;
+  chrome.storage.local.remove(['cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos'].map(K));
   updateGradientBar(); checkColorsDirty();
 }
 
-// ── Zen mode ──────────────────────────────────────────────────────────────
-
-function loadZen() {
-  chrome.storage.local.get('cum_zen', (res) => {
-    if (res.cum_zen) applyZen(true);
-  });
-}
+// ── Zen mode ───────────────────────────────────────────────────────────────
 
 function toggleZen(enterZen) {
   chrome.storage.local.set({ cum_zen: enterZen });
   applyZen(enterZen);
 }
-
 function applyZen(on) {
   $('main-view').style.display = on ? 'none' : '';
   $('zen-view').style.display  = on ? 'flex' : 'none';

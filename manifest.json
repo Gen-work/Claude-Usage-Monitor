@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Claude Usage Monitor",
-  "version": "2.0",
-  "description": "在输入框旁以光环强弱直观显示 Claude 用量。",
+  "version": "3.0.0",
+  "description": "Ambient usage meter for Claude.ai and ChatGPT: a glow around the chat input shows how much of your 5-hour / weekly quota is left.",
+  "minimum_chrome_version": "116",
   "permissions": [
     "storage",
     "cookies",
@@ -11,21 +12,23 @@
     "alarms"
   ],
   "host_permissions": [
-    "*://*.claude.ai/*"
+    "*://*.claude.ai/*",
+    "*://chatgpt.com/*",
+    "*://*.chatgpt.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["*://claude.ai/*"],
-      "js": ["i18n.js", "content.js"],
+      "matches": ["*://claude.ai/*", "*://chatgpt.com/*", "*://*.chatgpt.com/*"],
+      "js": ["shared.js", "i18n.js", "content.js"],
       "run_at": "document_idle"
     },
     {
       "matches": ["<all_urls>"],
-      "exclude_matches": ["*://claude.ai/*"],
-      "js": ["i18n.js", "float_only.js"],
+      "exclude_matches": ["*://claude.ai/*", "*://chatgpt.com/*", "*://*.chatgpt.com/*"],
+      "js": ["shared.js", "i18n.js", "float_only.js"],
       "run_at": "document_idle"
     }
   ],

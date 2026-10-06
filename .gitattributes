@@ -1,0 +1,8 @@
+# Normalise line endings in the repository; check out with LF everywhere so the
+# files are byte-identical on Windows, macOS and Linux. Chrome/Edge read every
+# extension file as UTF-8, so no BOM is needed (and none should be added).
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.zip binary

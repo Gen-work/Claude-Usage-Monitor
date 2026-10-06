@@ -1,0 +1,15 @@
+# Keep every source file UTF-8 so the extension never ships mojibake,
+# regardless of the editor's system code page (e.g. CP932 / Shift_JIS on
+# Japanese Windows, GBK on Chinese Windows).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

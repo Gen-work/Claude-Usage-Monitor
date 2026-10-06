@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- Visual harness for content.js / float_only.js without loading the extension.
+     This file is intentionally ASCII-only (non-ASCII goes through \u escapes) so
+     test/serve.js can serve it re-labelled as Shift_JIS (harness-sjis.html).
+     Query params: site=claude|chatgpt|other  pct=0-100  theme=dark|light  lang=zh|en|ja|ko|fr|ru|es|ar
+                   weekly=0-100  float=1  allpages=1 -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CUM harness</title>
+  <style>
+    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+    body.dark  { background: #262624; color: #eee; }
+    body.light { background: #f7f5f2; color: #222; }
+    .page { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 48px; gap: 24px; }
+    .info { position: fixed; top: 12px; left: 12px; font: 12px/1.6 monospace; opacity: .7; white-space: pre; }
+    /* Claude-like composer */
+    .cl-box { width: 640px; border-radius: 14px; padding: 10px 12px 8px; }
+    body.dark .cl-box  { background: #202020; border: 1px solid rgba(255,255,255,.08); }
+    body.light .cl-box { background: #fff; border: 1px solid rgba(0,0,0,.1); }
+    .cl-input { min-height: 42px; outline: none; font-size: 15px; line-height: 1.5; }
+    .cl-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+    .cl-row button { border-radius: 8px; border: 1px solid rgba(128,128,128,.3); background: transparent; color: inherit; padding: 6px 10px; cursor: pointer; }
+    .cl-send[disabled] { opacity: .35; }
+    /* ChatGPT-like composer */
+    .gpt-form { width: 680px; }
+    .gpt-box { border-radius: 26px; padding: 12px 16px; }
+    body.dark .gpt-box  { background: #1b1b1b; }
+    body.light .gpt-box { background: #f0f0f0; }
+    .gpt-input { min-height: 24px; outline: none; font-size: 15px; }
+    .gpt-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .gpt-row button { border-radius: 50%; width: 32px; height: 32px; border: 0; background: rgba(128,128,128,.25); color: inherit; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="info" id="info"></div>
+  <div class="page" id="page"></div>
+
+  <script>
+    // \u2500\u2500 chrome.* mock \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    (function () {
+      const q = new URLSearchParams(location.search);
+      const site   = q.get('site') || 'claude';
+      const pct    = q.has('pct') ? Number(q.get('pct')) : 72;
+      const weekly = q.has('weekly') ? Number(q.get('weekly')) : 40;
+      const theme  = q.get('theme') || 'dark';
+      const lang   = q.get('lang') || 'ja';
+      const now    = Date.now();
+      document.body.className = theme;
+      if (site !== 'other') document.documentElement.setAttribute('data-cum-provider', site);
+
+      const usage = (provider) => ({
+        provider, remainPct: pct, resetMs: now + 83 * 60000,
+        session: { remainPct: pct, resetMs: now + 83 * 60000 },
+        weekly:  { remainPct: weekly, resetMs: now + 3 * 86400000 },
+        ts: now,
+      });
+      const store = {
+        cum_lang: lang,
+        cum_fenabled: q.get('float') !== '0',
+        cum_allpages: q.get('allpages') === '1',
+        cum_provider: q.get('provider') || 'claude',
+        usageData: usage('claude'),
+        usageData_chatgpt: usage('chatgpt'),
+      };
+      const listeners = [];
+      window.chrome = {
+        runtime: {
+          id: 'harness', lastError: null,
+          sendMessage(msg, cb) {
+            if (msg && msg.type === 'GET_USAGE') cb && cb(store[msg.provider === 'chatgpt' ? 'usageData_chatgpt' : 'usageData']);
+            else cb && cb({ ok: true });
+          },
+          onMessage: { addListener() {} },
+        },
+        storage: {
+          local: {
+            get(keys, cb) {
+              const out = {};
+              (Array.isArray(keys) ? keys : [keys]).forEach(k => { if (k in store) out[k] = store[k]; });
+              setTimeout(() => cb(out), 0);
+            },
+            set(obj, cb) {
+              const changes = {};
+              for (const k of Object.keys(obj)) { changes[k] = { oldValue: store[k], newValue: obj[k] }; store[k] = obj[k]; }
+              listeners.forEach(l => l(changes, 'local'));
+              cb && cb();
+            },
+            remove(keys, cb) { (Array.isArray(keys) ? keys : [keys]).forEach(k => delete store[k]); cb && cb(); },
+          },
+          onChanged: { addListener(l) { listeners.push(l); } },
+        },
+      };
+      window.__harness = { store, site, pct, setPct(p) { store.usageData.remainPct = p; store.usageData.session.remainPct = p; chrome.storage.local.set({ usageData: { ...store.usageData } }); } };
+
+      // \u2500\u2500 host page composer \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+      const page = document.getElementById('page');
+      if (site === 'claude') {
+        page.innerHTML =
+          '<div class="cl-box">' +
+          '  <div class="cl-input ProseMirror" data-testid="chat-input" contenteditable="true" role="textbox"></div>' +
+          '  <div class="cl-row">' +
+          '    <button type="button" data-testid="model-selector-dropdown" aria-label="\u30e2\u30c7\u30eb\uff1aOpus 5.5">Opus 5.5</button>' +
+          '    <button type="button" class="cl-send" data-testid="chat-input-send" aria-label="\u30e1\u30c3\u30bb\u30fc\u30b8\u3092\u9001\u4fe1" disabled>\u2191</button>' +
+          '  </div>' +
+          '</div>';
+        const inp = page.querySelector('[data-testid="chat-input"]'), send = page.querySelector('.cl-send');
+        inp.addEventListener('input', () => { send.disabled = !inp.innerText.trim(); });
+      } else if (site === 'chatgpt') {
+        page.innerHTML =
+          '<form class="gpt-form"><div class="gpt-box">' +
+          '  <div class="gpt-input ProseMirror" contenteditable="true" role="textbox"></div>' +
+          '  <div class="gpt-row">' +
+          '    <button type="button" aria-label="\u6dfb\u52a0\u6587\u4ef6">+</button>' +
+          '    <button type="submit" aria-label="\u53d1\u9001\u6d88\u606f" style="display:none">\u2191</button>' +
+          '  </div>' +
+          '</div></form>';
+        const inp = page.querySelector('.gpt-input'), send = page.querySelector('button[type=submit]');
+        inp.addEventListener('input', () => { send.style.display = inp.innerText.trim() ? '' : 'none'; });
+        page.querySelector('form').addEventListener('submit', e => e.preventDefault());
+      } else {
+        page.innerHTML = '<p>Plain page (float_only.js). Enable "all pages" via ?allpages=1</p>';
+      }
+      document.getElementById('info').textContent =
+        'site=' + site + ' pct=' + pct + ' weekly=' + weekly + ' theme=' + theme + ' lang=' + lang +
+        '\ncharset=' + document.characterSet;
+
+      // Load the real scripts (same order as manifest.json)
+      const scripts = ['../shared.js', '../i18n.js', site === 'other' ? '../float_only.js' : '../content.js'];
+      (function next(i) {
+        if (i >= scripts.length) return;
+        const s = document.createElement('script'); s.src = scripts[i] + '?t=' + Date.now();
+        s.onload = () => next(i + 1); document.head.appendChild(s);
+      })(0);
+    })();
+  </script>
+</body>
+</html>
