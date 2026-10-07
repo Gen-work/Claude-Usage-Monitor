@@ -63,12 +63,16 @@ test/           # 単体テスト（node --test）と視覚確認用ハーネス
 npm test          # shared.js の純粋関数（パーサ、色段階、i18n 網羅性など）
 npm run check     # 全スクリプトの構文チェック
 npm run harness   # http://localhost:8765/test/harness.html?site=claude|chatgpt|other&lang=ja&theme=light
-npm run package   # packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip を生成（Windows PowerShell）
+npm run package   # packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip を生成（Python 3.8+、各 OS 対応）
 ```
 
 GitHub Actions（`.github/workflows/ci.yml`）が push / PR ごとに同じチェックを実行し、読み込み可能な zip を `Claude-Usage-Monitor-chrome-edge` アーティファクトとして保存する。
 
 ### インストール方法
+
+[最新版のインストール助手をダウンロード](https://github.com/Gen-work/Claude-Usage-Monitor/releases/latest/download/Claude-Usage-Monitor-installer.zip)
+
+ZIP をすべて展開し、Windows は `install.cmd`、macOS は `install.command`、Linux は `sh install.sh` を実行。表示された固定フォルダを、開発者モードの「パッケージ化されていない拡張機能を読み込む」で選択してください。更新は助手を再実行後、拡張の再読み込みをクリックします。初回 Release 公開前はリンクが利用できません。
 
 1. このリポジトリをクローンまたはダウンロード
 2. Chrome は `chrome://extensions`、Edge は `edge://extensions` を開く
@@ -135,12 +139,16 @@ test/           # Unit tests (node --test) + visual harness
 npm test          # pure helpers in shared.js (parsers, colour tiers, i18n completeness, …)
 npm run check     # syntax check of every script
 npm run harness   # http://localhost:8765/test/harness.html?site=claude|chatgpt|other&lang=ja&theme=light
-npm run package   # builds packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip (Windows PowerShell)
+npm run package   # builds packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip (Python 3.8+, cross-platform)
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push / PR and uploads a ready-to-load zip as the `Claude-Usage-Monitor-chrome-edge` artifact.
 
 ### Installation
+
+[Download the latest installation helper](https://github.com/Gen-work/Claude-Usage-Monitor/releases/latest/download/Claude-Usage-Monitor-installer.zip)
+
+Extract the entire ZIP. Run `install.cmd` on Windows, `install.command` on macOS, or `sh install.sh` on Linux. Select the stable directory shown by the helper via **Developer mode > Load unpacked**. For updates, rerun the helper and click Reload on the extension. The download link becomes available after the first Release is published.
 
 1. Clone or download this repository.
 2. Open `chrome://extensions` (Chrome) or `edge://extensions` (Edge).
@@ -207,12 +215,16 @@ test/           # 单元测试（node --test）与可视化测试页
 npm test          # shared.js 纯函数（解析器、颜色分档、i18n 完整性等）
 npm run check     # 所有脚本语法检查
 npm run harness   # http://localhost:8765/test/harness.html?site=claude|chatgpt|other&lang=ja&theme=light
-npm run package   # 生成 packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip（Windows PowerShell）
+npm run package   # 生成 packages/Claude-Usage-Monitor-v<version>-chrome-edge.zip（Python 3.8+，跨平台）
 ```
 
 GitHub Actions（`.github/workflows/ci.yml`）在每次 push / PR 时运行同样的检查，并把可直接加载的 zip 作为 `Claude-Usage-Monitor-chrome-edge` 构件上传。
 
 ### 安装方法
+
+[一键下载最新安装助手](https://github.com/Gen-work/Claude-Usage-Monitor/releases/latest/download/Claude-Usage-Monitor-installer.zip)
+
+完整解压 ZIP：Windows 双击 `install.cmd`，macOS 双击 `install.command`，Linux 运行 `sh install.sh`。助手会将扩展复制到固定目录并显示路径；在浏览器开启开发者模式，点击“加载已解压的扩展程序”，选择该目录即可。更新时重新运行助手，然后点击扩展卡片上的“重新加载”。首次发布 Release 后下载链接才会生效。
 
 1. 克隆或下载本仓库。
 2. Chrome 打开 `chrome://extensions`，Edge 打开 `edge://extensions`。
@@ -226,3 +238,11 @@ GitHub Actions（`.github/workflows/ci.yml`）在每次 push / PR 时运行同�
 
 - Claude usage endpoint shape cross-checked with [lugia19/Claude-Usage-Extension](https://github.com/lugia19/Claude-Usage-Extension).
 - ChatGPT `wham/usage` window shape cross-checked with [thefishbonecoder/worklimit-widget](https://github.com/thefishbonecoder/worklimit-widget) and [sebastian-suarez/ai-usage#5](https://github.com/sebastian-suarez/ai-usage/issues/5).
+
+## Release packaging / 自动发布
+
+`npm run package` builds an extension-only ZIP, `Claude-Usage-Monitor-installer.zip`, and `SHA256SUMS.txt` under `packages/`. Packaging requires Node.js 18+ and Python 3.8+; end users need neither. The old PowerShell entry point remains supported.
+
+发布前同步 `manifest.json` 与 `package.json` 的版本号，将改动推送后创建并推送对应 `v<版本号>` 标签，例如 `v3.0.0`。`.github/workflows/release.yml` 会检查、打包并将 ZIP 和 SHA-256 校验文件上传到 GitHub Release。也可手动运行 Release 工作流，输入已存在且包含本工作流的版本标签。标签与清单版本不一致时发布会失败。
+
+Windows/macOS 普通用户的 Chrome 商店外扩展仍需手动加载。安装助手不修改浏览器策略，不提供自动更新；标准一键安装和自动更新需要发布到扩展商店。参见 [Chrome 官方分发说明](https://developer.chrome.com/docs/extensions/how-to/distribute)。

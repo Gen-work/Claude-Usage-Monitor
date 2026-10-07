@@ -1,0 +1,25 @@
+Claude Usage Monitor installation helper / 安装助手
+
+Extract the entire ZIP first. No Node.js/Python or administrator access required.
+先完整解压 ZIP，无需 Node.js、Python 或管理员权限。
+
+Windows: double-click install.cmd / 双击 install.cmd
+macOS: double-click install.command / 双击 install.command
+  If blocked, use Terminal: /bin/sh /path/to/extracted/install.command
+  无法打开时，在终端运行 /bin/sh 后加 install.command 的完整路径。
+Linux: sh /path/to/extracted/install.sh
+
+The helper copies extension assets to a stable directory and shows its path.
+Open chrome://extensions or edge://extensions, enable Developer mode, click
+Load unpacked and select that directory. Do not delete that directory.
+助手复制扩展到固定目录并显示路径。在浏览器打开 chrome://extensions 或
+edge://extensions，开启开发者模式，点击“加载已解压的扩展程序”，选择该目录。
+请保留此目录。更新时重新运行助手，再点击扩展卡片上的“重新加载”。
+
+Chrome/Edge still require manual confirmation. A ZIP/CRX installer cannot provide
+ordinary users with silent installation on Windows/macOS. Store publication is
+required for the usual one-click installation and automatic browser updates.
+Windows/macOS 普通用户仍需手动加载；商店发布才支持标准一键安装及自动更新。
+
+To uninstall: remove the extension in the browser, then delete the directory
+shown by the helper. / 卸载：在浏览器移除扩展后删除助手显示的目录。
