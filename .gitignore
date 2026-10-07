@@ -28,3 +28,7 @@ build/
 
 # Local extension packages (CI uploads them as artifacts)
 packages/
+
+# Python packaging tooling
+__pycache__/
+*.pyc
