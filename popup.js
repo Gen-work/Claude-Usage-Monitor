@@ -25,12 +25,24 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.storage.local.get(['cum_lang', 'cum_provider', 'cum_zen'], (res) => {
     if (res.cum_lang) lang = res.cum_lang;
     provider = C.USAGE_KEY[res.cum_provider] ? res.cum_provider : 'claude';
-    applyLang();
-    buildLangButtons();
-    buildProviderSeg();
-    loadUsage();
-    loadSettings();
-    if (res.cum_zen) applyZen(true);
+    const init = () => {
+      C.applyMenuTheme(document.documentElement, provider);
+      applyLang();
+      buildLangButtons();
+      buildProviderSeg();
+      loadUsage();
+      loadSettings();
+      if (res.cum_zen) applyZen(true);
+    };
+    // Prefer the current chat page; unrelated pages retain the saved choice.
+    try {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const error = chrome.runtime.lastError;
+        const current = !error && C.providerFromUrl(tabs && tabs[0] && tabs[0].url);
+        if (current) provider = current;
+        init();
+      });
+    } catch (e) { init(); }
   });
 
   // Live refresh while the popup is open
@@ -142,6 +154,7 @@ function buildProviderSeg() {
     b.textContent = C.PROVIDER_LABEL[p];
     b.addEventListener('click', () => {
       provider = p;
+      C.applyMenuTheme(document.documentElement, provider);
       chrome.storage.local.set({ cum_provider: p });
       buildProviderSeg(); loadUsage(); loadSettings(); updateHaloTitle();
       try { chrome.runtime.sendMessage({ type: 'FORCE_FETCH', provider: p }, () => void chrome.runtime.lastError); } catch (e) {}
@@ -203,7 +216,7 @@ function showUsage(data) {
 
   const note = $('stale-note');
   note.style.display = data.stale ? 'block' : 'none';
-  note.textContent = data.stale ? '⚠ ' + t(provider === 'chatgpt' ? 'errorMsgChatgpt' : 'errorMsg') : '';
+  note.textContent = data.stale ? '⚠ ' + t('staleData') : '';
 
   const el = $('last-updated');
   el.setAttribute('data-dynamic', '1');

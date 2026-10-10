@@ -41,7 +41,7 @@
   }
   function loadProviderSettings() {
     if (!C.isCtxValid()) return;
-    try { chrome.storage.local.get(ALL_PROVIDER_KEYS, (res) => { applyProviderSettings(res); drawFloat(); }); } catch (e) {}
+    try { chrome.storage.local.get(ALL_PROVIDER_KEYS, (res) => { applyProviderSettings(res); applyLangToUi(); drawFloat(); }); } catch (e) {}
   }
 
   // ── DOM ───────────────────────────────────────────────────────────────────
@@ -94,16 +94,16 @@
         position:fixed; z-index:2147483643; padding:5px 10px; border-radius:8px;
         font:12px/1.5 ${FONT};
         background:rgba(16,14,12,.88); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-        border:1px solid rgba(217,119,87,.2); color:rgba(255,255,255,.85);
+        border:1px solid rgba(var(--cum-ui-accent-rgb, 217,119,87),.2); color:rgba(255,255,255,.85);
         white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .18s ease;
         text-align:start;
       }
       #cum-ftip-ext .tp { font-weight:600; }
-      #cum-ftip-ext .sub { color:rgba(255,255,255,.5); font-size:11px; }
+      #cum-ftip-ext .sub { color:rgba(255,255,255,.65); font-size:11px; }
 
       #cum-ctx-ext, .cum-ext-submenu {
         position:fixed; min-width:150px; border-radius:10px;
-        background:rgba(22,20,18,.94); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+        background:var(--cum-ui-menu-bg, rgba(22,20,18,.94)); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
         border:1px solid rgba(255,255,255,.1); box-shadow:0 8px 32px rgba(0,0,0,.5);
         overflow:hidden; display:none; z-index:2147483644;
         font:13px/1 ${FONT}; color:rgba(255,255,255,.82); text-align:start;
@@ -116,9 +116,9 @@
       .cum-ext-item:hover { background:rgba(255,255,255,.08); }
       .cum-ext-item.danger { color:#e05252; }
       .cum-ext-sep { height:1px; background:rgba(255,255,255,.08); margin:2px 0; }
-      .cum-ext-sub-hdr { font-size:11px; color:rgba(255,255,255,.35); padding:8px 14px 4px; cursor:default; }
-      .cum-ext-check { color:#d97757; flex-shrink:0; display:inline-flex; }
-      .cum-ext-arrow { color:rgba(255,255,255,.3); flex-shrink:0; display:inline-flex; }
+      .cum-ext-sub-hdr { font-size:11px; color:rgba(255,255,255,.65); padding:8px 14px 4px; cursor:default; }
+      .cum-ext-check { color:var(--cum-ui-accent, #d97757); flex-shrink:0; display:inline-flex; }
+      .cum-ext-arrow { color:rgba(255,255,255,.65); flex-shrink:0; display:inline-flex; }
       [dir="rtl"] .cum-ext-arrow svg { transform:scaleX(-1); }
 
       .cum-ext-slider-row { padding:6px 14px 10px; display:flex; align-items:center; gap:8px; }
@@ -128,9 +128,9 @@
       }
       .cum-ext-slider-row input[type=range]::-webkit-slider-thumb {
         appearance:none; -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
-        background:#d97757; cursor:pointer;
+        background:var(--cum-ui-accent, #d97757); cursor:pointer;
       }
-      .cum-ext-slider-val { font-size:11px; color:rgba(255,255,255,.4); width:28px; text-align:end; flex-shrink:0; font-variant-numeric:tabular-nums; }
+      .cum-ext-slider-val { font-size:11px; color:rgba(255,255,255,.65); width:28px; text-align:end; flex-shrink:0; font-variant-numeric:tabular-nums; }
 
       .cum-ext-grow { padding:6px 14px 8px; display:flex; align-items:center; gap:6px; position:relative; color:rgba(255,255,255,.6); }
       .cum-ext-gbar { flex:1; height:16px; border-radius:8px; position:relative; border:1px solid rgba(255,255,255,.1); }
@@ -159,7 +159,7 @@
       .cum-ext-creset {
         padding:4px 8px; border-radius:7px; font:11px ${FONT};
         background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
-        color:rgba(255,255,255,.35); cursor:pointer;
+        color:rgba(255,255,255,.65); cursor:pointer;
       }
       .cum-ext-creset:hover { background:rgba(224,82,82,.1); border-color:rgba(224,82,82,.2); color:rgba(224,82,82,.7); }
 
@@ -174,7 +174,7 @@
   }
 
   function applyLangToUi() {
-    [floatTipEl, ctxEl, ...activeSubMenus].forEach(el => C.applyLang(el, lang));
+    [floatTipEl, ctxEl, ...activeSubMenus].forEach(el => { C.applyLang(el, lang); C.applyMenuTheme(el, F.provider); });
   }
 
   // ── Float icon ────────────────────────────────────────────────────────────
@@ -370,7 +370,7 @@
     activeSubMenus.forEach(s => { try { s.remove(); } catch(e){} });
     activeSubMenus = [];
     ctxEl.innerHTML = '';
-    C.applyLang(ctxEl, lang);
+    C.applyLang(ctxEl, lang); C.applyMenuTheme(ctxEl, F.provider);
 
     const item = (label, cls, action, checked, parent) => {
       const d = document.createElement('div');
@@ -388,7 +388,7 @@
       const ar = document.createElement('span'); ar.className = 'cum-ext-arrow'; ar.innerHTML = C.ICONS.chevron;
       wrap.appendChild(sp); wrap.appendChild(ar);
       const sub = document.createElement('div'); sub.className = 'cum-ext-submenu';
-      C.applyLang(sub, lang);
+      C.applyLang(sub, lang); C.applyMenuTheme(sub, F.provider);
       document.body.appendChild(sub);
       activeSubMenus.push(sub);
       let hideTimer = null;

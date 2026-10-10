@@ -43,6 +43,22 @@
   // ── Providers ────────────────────────────────────────────────────────────
   const PROVIDERS = ['claude', 'chatgpt'];
   const PROVIDER_LABEL = { claude: 'Claude', chatgpt: 'ChatGPT' };
+  const MENU_THEMES = {
+    claude: { accent: '#d97757', rgb: '217,119,87', bg: '#1a1714', fg: '#f0ede8', menuBg: 'rgba(22,20,18,.96)' },
+    chatgpt: { accent: '#10a37f', rgb: '16,163,127', bg: '#171717', fg: '#f5f5f5', menuBg: 'rgba(20,20,20,.96)' },
+  };
+  function applyMenuTheme(el, provider) {
+    if (!el || !el.style) return;
+    const theme = MENU_THEMES[provider] || MENU_THEMES.claude;
+    el.style.setProperty('--cum-ui-accent', theme.accent);
+    el.style.setProperty('--cum-ui-accent-rgb', theme.rgb);
+    el.style.setProperty('--cum-ui-bg', theme.bg);
+    el.style.setProperty('--cum-ui-fg', theme.fg);
+    el.style.setProperty('--cum-ui-menu-bg', theme.menuBg);
+  }
+  function providerFromUrl(url) {
+    try { return detectProvider(new URL(url).hostname); } catch (e) { return null; }
+  }
   // storage key that holds the normalised usage snapshot for each provider.
   // 'claude' keeps the legacy key so existing installs upgrade in place.
   const USAGE_KEY = { claude: 'usageData', chatgpt: 'usageData_chatgpt' };
@@ -284,7 +300,7 @@
 
   root.CUM = {
     PETALS, CW, EMPTY_PETAL, DEFAULT_COLORS, PROVIDER_COLORS, PER_PROVIDER_KEYS, settingKey,
-    PROVIDERS, PROVIDER_LABEL, USAGE_KEY, detectProvider,
+    PROVIDERS, PROVIDER_LABEL, USAGE_KEY, detectProvider, providerFromUrl, MENU_THEMES, applyMenuTheme,
     LOCALE, localeOf, dirOf, guessLang, fontStack, applyLang,
     makeT, ICONS, escapeHtml,
     tierOf, usageColor,

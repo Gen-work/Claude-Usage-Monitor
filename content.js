@@ -177,15 +177,15 @@
         position:fixed; z-index:2147483643; padding:5px 10px; border-radius:8px;
         font:12px/1.5 ${FONT};
         background:rgba(16,14,12,.88); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-        border:1px solid rgba(217,119,87,.2); color:rgba(255,255,255,.85);
+        border:1px solid rgba(var(--cum-ui-accent-rgb, 217,119,87),.2); color:rgba(255,255,255,.85);
         white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .18s ease;
       }
       #cum-ftip .tp { font-weight:600; }
-      #cum-ftip .sub { color:rgba(255,255,255,.5); font-size:11px; }
+      #cum-ftip .sub { color:rgba(255,255,255,.65); font-size:11px; }
 
       #cum-ctx, .cum-submenu-fixed {
         position:fixed; min-width:150px; border-radius:10px;
-        background:rgba(22,20,18,.94); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+        background:var(--cum-ui-menu-bg, rgba(22,20,18,.94)); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
         border:1px solid rgba(255,255,255,.1); box-shadow:0 8px 32px rgba(0,0,0,.5);
         overflow:hidden; display:none; z-index:2147483644;
         font:13px/1 ${FONT}; color:rgba(255,255,255,.82);
@@ -198,9 +198,9 @@
       .cum-ctx-item:hover { background:rgba(255,255,255,.08); }
       .cum-ctx-item.danger { color:#e05252; }
       .cum-ctx-sep { height:1px; background:rgba(255,255,255,.08); margin:2px 0; }
-      .cum-ctx-sub-hdr { font-size:11px; color:rgba(255,255,255,.35); padding:8px 14px 4px; cursor:default; }
-      .cum-ctx-check { color:#d97757; flex-shrink:0; display:inline-flex; }
-      .cum-ctx-arrow { color:rgba(255,255,255,.3); flex-shrink:0; display:inline-flex; }
+      .cum-ctx-sub-hdr { font-size:11px; color:rgba(255,255,255,.65); padding:8px 14px 4px; cursor:default; }
+      .cum-ctx-check { color:var(--cum-ui-accent, #d97757); flex-shrink:0; display:inline-flex; }
+      .cum-ctx-arrow { color:rgba(255,255,255,.65); flex-shrink:0; display:inline-flex; }
       [dir="rtl"] .cum-ctx-arrow svg { transform:scaleX(-1); }
 
       .cum-ctx-slider-row { padding:6px 14px 10px; display:flex; align-items:center; gap:8px; }
@@ -210,9 +210,9 @@
       }
       .cum-ctx-slider-row input[type=range]::-webkit-slider-thumb {
         appearance:none; -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
-        background:#d97757; cursor:pointer;
+        background:var(--cum-ui-accent, #d97757); cursor:pointer;
       }
-      .cum-ctx-slider-val { font-size:11px; color:rgba(255,255,255,.4); width:28px; text-align:end; flex-shrink:0; font-variant-numeric:tabular-nums; }
+      .cum-ctx-slider-val { font-size:11px; color:rgba(255,255,255,.65); width:28px; text-align:end; flex-shrink:0; font-variant-numeric:tabular-nums; }
 
       .cum-ctx-grow { padding:6px 14px 8px; display:flex; align-items:center; gap:6px; position:relative; color:rgba(255,255,255,.6); }
       .cum-ctx-gbar { flex:1; height:16px; border-radius:8px; position:relative; border:1px solid rgba(255,255,255,.1); }
@@ -241,7 +241,7 @@
       .cum-ctx-creset {
         padding:4px 8px; border-radius:7px; font:11px ${FONT};
         background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
-        color:rgba(255,255,255,.35); cursor:pointer;
+        color:rgba(255,255,255,.65); cursor:pointer;
       }
       .cum-ctx-creset:hover { background:rgba(224,82,82,.1); border-color:rgba(224,82,82,.2); color:rgba(224,82,82,.7); }
     `;
@@ -269,7 +269,7 @@
 
   // Apply the UI language to every root element we own (font + direction)
   function applyLangToUi() {
-    [inlineEl, floatTipEl, ctxEl, ...activeSubMenus].forEach(el => C.applyLang(el, lang));
+    [inlineEl, floatTipEl, ctxEl, ...activeSubMenus].forEach(el => { C.applyLang(el, lang); C.applyMenuTheme(el, PROVIDER); });
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -489,7 +489,7 @@
     activeSubMenus.forEach(s => { try { s.remove(); } catch(e){} });
     activeSubMenus = [];
     ctxEl.innerHTML = '';
-    C.applyLang(ctxEl, lang);
+    C.applyLang(ctxEl, lang); C.applyMenuTheme(ctxEl, PROVIDER);
 
     const item = (label, cls, action, checked, parent) => {
       const d = document.createElement('div');
@@ -515,7 +515,7 @@
       wrap.appendChild(sp); wrap.appendChild(ar);
       const sub = document.createElement('div');
       sub.className = 'cum-submenu-fixed';
-      C.applyLang(sub, lang);
+      C.applyLang(sub, lang); C.applyMenuTheme(sub, PROVIDER);
       document.body.appendChild(sub);
       activeSubMenus.push(sub);
       let hideTimer = null;

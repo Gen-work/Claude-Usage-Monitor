@@ -8,7 +8,7 @@ const vm = require('node:vm');
 
 // Load shared.js + i18n.js into a bare sandbox (no window / document), the
 // same way the service worker sees them.
-const sandbox = { self: null, console };
+const sandbox = { self: null, console, URL };
 sandbox.self = sandbox;
 vm.createContext(sandbox);
 for (const f of ['shared.js', 'i18n.js']) {
@@ -25,6 +25,14 @@ test('detectProvider maps hosts', () => {
   assert.equal(C.detectProvider('chat.openai.com'), 'chatgpt');
   assert.equal(C.detectProvider('example.com'), null);
   assert.equal(C.detectProvider(undefined), null);
+});
+test('providerFromUrl rejects malformed and unrelated URLs', () => {
+  assert.equal(C.providerFromUrl('https://claude.ai/new'), 'claude');
+  assert.equal(C.providerFromUrl('https://chatgpt.com/c/123'), 'chatgpt');
+  assert.equal(C.providerFromUrl('https://chatgpt.com.example.com/'), null);
+  assert.equal(C.providerFromUrl('chrome://extensions/'), null);
+  assert.equal(C.providerFromUrl('invalid'), null);
+  assert.equal(C.providerFromUrl(undefined), null);
 });
 
 // ── tiers / colours ─────────────────────────────────────────────────────────
