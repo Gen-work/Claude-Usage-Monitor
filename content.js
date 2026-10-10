@@ -33,6 +33,12 @@
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   let haloEl, sendRingEl, sendArc, srSvg, srTrack, inlineEl, cdSpan, tokSpan, tokWrap;
+  // First-run hints: one short line in the chip's own font, shown once per install, then gone
+  const HINT_MS = 8000;
+  const HINTS = {
+    cd:  { key: 'cum_hint_cd',  text: 'hintCountdown', el: null, seen: true, timer: null },
+    tok: { key: 'cum_hint_tok', text: 'hintTok',       el: null, seen: true, timer: null },
+  };
   let floatEl, floatPaths = [], floatTipEl, ctxEl, rzEl;
   let activeSubMenus = [];
   let srPrevVisible = false;
@@ -156,7 +162,11 @@
         overflow:hidden; max-width:0; opacity:0;
         transition:max-width .25s ease, opacity .2s ease;
       }
-      #cum-il .tok-wrap.on { max-width:120px; opacity:1; }
+      #cum-il .tok-wrap.on { max-width:320px; opacity:1; }
+      #cum-il .hint { display:none; color:var(--cum-fg2); opacity:0; transition:opacity .3s ease; }
+      #cum-il .hint.on { display:inline; animation:cum-hint-in .3s ease forwards; }
+      #cum-il .hint.out { opacity:0 !important; animation:none; }
+      @keyframes cum-hint-in { from { opacity:0; } to { opacity:1; } }
 
       #cum-float {
         position:fixed; z-index:2147483641;
@@ -181,7 +191,7 @@
         white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .18s ease;
       }
       #cum-ftip .tp { font-weight:600; }
-      #cum-ftip .sub { color:rgba(255,255,255,.65); font-size:11px; }
+      #cum-ftip .sub { color:rgba(255,255,255,.5); font-size:11px; }
 
       #cum-ctx, .cum-submenu-fixed {
         position:fixed; min-width:150px; border-radius:10px;
@@ -198,9 +208,9 @@
       .cum-ctx-item:hover { background:rgba(255,255,255,.08); }
       .cum-ctx-item.danger { color:#e05252; }
       .cum-ctx-sep { height:1px; background:rgba(255,255,255,.08); margin:2px 0; }
-      .cum-ctx-sub-hdr { font-size:11px; color:rgba(255,255,255,.65); padding:8px 14px 4px; cursor:default; }
+      .cum-ctx-sub-hdr { font-size:11px; color:rgba(255,255,255,.5); padding:8px 14px 4px; cursor:default; }
       .cum-ctx-check { color:var(--cum-ui-accent, #d97757); flex-shrink:0; display:inline-flex; }
-      .cum-ctx-arrow { color:rgba(255,255,255,.65); flex-shrink:0; display:inline-flex; }
+      .cum-ctx-arrow { color:rgba(255,255,255,.5); flex-shrink:0; display:inline-flex; }
       [dir="rtl"] .cum-ctx-arrow svg { transform:scaleX(-1); }
 
       .cum-ctx-slider-row { padding:6px 14px 10px; display:flex; align-items:center; gap:8px; }
@@ -241,7 +251,7 @@
       .cum-ctx-creset {
         padding:4px 8px; border-radius:7px; font:11px ${FONT};
         background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
-        color:rgba(255,255,255,.65); cursor:pointer;
+        color:rgba(255,255,255,.5); cursor:pointer;
       }
       .cum-ctx-creset:hover { background:rgba(224,82,82,.1); border-color:rgba(224,82,82,.2); color:rgba(224,82,82,.7); }
     `;
@@ -308,8 +318,10 @@
     tokWrap = document.createElement('div'); tokWrap.className = 'tok-wrap';
     const sep = document.createElement('div'); sep.className = 'sep';
     tokSpan = document.createElement('span'); tokSpan.className = 'tok';
-    tokWrap.appendChild(sep); tokWrap.appendChild(tokSpan);
-    inlineEl.appendChild(cdSpan); inlineEl.appendChild(tokWrap);
+    HINTS.cd.el  = document.createElement('span'); HINTS.cd.el.className  = 'hint';
+    HINTS.tok.el = document.createElement('span'); HINTS.tok.el.className = 'hint';
+    tokWrap.appendChild(sep); tokWrap.appendChild(tokSpan); tokWrap.appendChild(HINTS.tok.el);
+    inlineEl.appendChild(cdSpan); inlineEl.appendChild(HINTS.cd.el); inlineEl.appendChild(tokWrap);
     ov.appendChild(inlineEl);
 
     document.body.appendChild(ov);
@@ -708,7 +720,7 @@
   //  SETTINGS
   // ═════════════════════════════════════════════════════════════════════════
   const SETTING_KEYS = ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_fpos','cum_lang',
-    'cum_fsize','cum_zen','cum_allpages', ...C.PER_PROVIDER_KEYS.map(K)];
+    'cum_fsize','cum_zen','cum_allpages', HINTS.cd.key, HINTS.tok.key, ...C.PER_PROVIDER_KEYS.map(K)];
 
   function loadFloatSettings() {
     if (!C.isCtxValid()) return;
@@ -721,6 +733,8 @@
           F.watermark    = !!res.cum_fwatermark;
           F.zen          = !!res.cum_zen;
           F.allPages     = !!res.cum_allpages;
+          HINTS.cd.seen  = !!res[HINTS.cd.key];
+          HINTS.tok.seen = !!res[HINTS.tok.key];
           const num = (k, d) => typeof res[K(k)] === 'number' ? res[K(k)] : d;
           F.haloActive   = num('cum_halo_active', 1.0);
           F.haloIdle     = num('cum_halo_idle', 0.5);
@@ -946,13 +960,28 @@
     const ms = S.session?.resetMs ?? S.resetMs ?? 0;
     const now = Date.now();
     cdSpan.textContent = (ms > 0 && ms > now) ? C.fmtCountdown(ms - now) : (ms > 0 ? t('newCycle') : '—');
+    if (ms > now) showHint(HINTS.cd);
     refreshTok();
+  }
+
+  // Show a hint once; after HINT_MS it fades out and is remembered as seen
+  function showHint(h) {
+    if (!h.el || h.seen) return;
+    h.el.textContent = t(h.text);
+    if (h.timer) return;
+    h.el.classList.remove('out'); h.el.classList.add('on');
+    h.timer = setTimeout(() => {
+      h.seen = true;
+      h.el.classList.add('out');
+      setTimeout(() => h.el.classList.remove('on', 'out'), 300);
+      try { if (C.isCtxValid()) chrome.storage.local.set({ [h.key]: true }); } catch (e) {}
+    }, HINT_MS);
   }
 
   function refreshTok() {
     if (!tokSpan) return;
     const tok = C.estimateTokens(textOf(findInput()).replace(/\n$/, ''));
-    if (tok > 0) { tokSpan.textContent = '~' + C.fmtN(tok) + ' tok'; tokWrap.classList.add('on'); }
+    if (tok > 0) { tokSpan.textContent = '~' + C.fmtN(tok) + ' tok'; tokWrap.classList.add('on'); showHint(HINTS.tok); }
     else tokWrap.classList.remove('on');
   }
 

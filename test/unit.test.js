@@ -29,6 +29,8 @@ test('detectProvider maps hosts', () => {
 test('providerFromUrl rejects malformed and unrelated URLs', () => {
   assert.equal(C.providerFromUrl('https://claude.ai/new'), 'claude');
   assert.equal(C.providerFromUrl('https://chatgpt.com/c/123'), 'chatgpt');
+  assert.equal(C.providerFromUrl('https://www.chatgpt.com/'), 'chatgpt');
+  assert.equal(C.providerFromUrl('https://claude.ai.example.com/'), null);
   assert.equal(C.providerFromUrl('https://chatgpt.com.example.com/'), null);
   assert.equal(C.providerFromUrl('chrome://extensions/'), null);
   assert.equal(C.providerFromUrl('invalid'), null);

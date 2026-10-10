@@ -99,7 +99,7 @@
         text-align:start;
       }
       #cum-ftip-ext .tp { font-weight:600; }
-      #cum-ftip-ext .sub { color:rgba(255,255,255,.65); font-size:11px; }
+      #cum-ftip-ext .sub { color:rgba(255,255,255,.5); font-size:11px; }
 
       #cum-ctx-ext, .cum-ext-submenu {
         position:fixed; min-width:150px; border-radius:10px;
@@ -116,9 +116,9 @@
       .cum-ext-item:hover { background:rgba(255,255,255,.08); }
       .cum-ext-item.danger { color:#e05252; }
       .cum-ext-sep { height:1px; background:rgba(255,255,255,.08); margin:2px 0; }
-      .cum-ext-sub-hdr { font-size:11px; color:rgba(255,255,255,.65); padding:8px 14px 4px; cursor:default; }
+      .cum-ext-sub-hdr { font-size:11px; color:rgba(255,255,255,.5); padding:8px 14px 4px; cursor:default; }
       .cum-ext-check { color:var(--cum-ui-accent, #d97757); flex-shrink:0; display:inline-flex; }
-      .cum-ext-arrow { color:rgba(255,255,255,.65); flex-shrink:0; display:inline-flex; }
+      .cum-ext-arrow { color:rgba(255,255,255,.5); flex-shrink:0; display:inline-flex; }
       [dir="rtl"] .cum-ext-arrow svg { transform:scaleX(-1); }
 
       .cum-ext-slider-row { padding:6px 14px 10px; display:flex; align-items:center; gap:8px; }
@@ -159,7 +159,7 @@
       .cum-ext-creset {
         padding:4px 8px; border-radius:7px; font:11px ${FONT};
         background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
-        color:rgba(255,255,255,.65); cursor:pointer;
+        color:rgba(255,255,255,.5); cursor:pointer;
       }
       .cum-ext-creset:hover { background:rgba(224,82,82,.1); border-color:rgba(224,82,82,.2); color:rgba(224,82,82,.7); }
 
