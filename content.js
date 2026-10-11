@@ -27,7 +27,11 @@
     haloActive: 1.0, haloIdle: 0.5,
     colorHi: PC.hi, colorMid: PC.mid, colorLo: PC.lo,
     colorMidPos: PC.midPos, fsize: 56,
+    breathRate: C.MOTION_DEFAULTS.breathRate, colorFade: C.MOTION_DEFAULTS.colorFade,
+    showCd: true, showTok: true,
   };
+  // Respect the OS "reduce motion" setting: the halo stops breathing but keeps its colour
+  const reduceMotion = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)'); } catch (e) { return null; } })();
   const usageColor = () => C.usageColor(F, S.remainPct);
   const safeSet = C.safeSet;
 
@@ -140,7 +144,7 @@
     s.textContent = `
       #cum-ov { position:fixed; inset:0; pointer-events:none; z-index:2147483640; overflow:visible; }
 
-      #cum-halo { position:absolute; border-radius:20px; pointer-events:none; transition:box-shadow 1s ease,opacity .8s ease; }
+      #cum-halo { position:absolute; border-radius:20px; pointer-events:none; transition:box-shadow var(--cum-fade,1s) ease,opacity .8s ease; }
 
       #cum-sr { position:absolute; width:40px; height:40px; pointer-events:none; opacity:0; }
       #cum-sr.ld  { opacity:0.5; }
@@ -174,7 +178,7 @@
       }
       #cum-float:active { cursor:grabbing; }
       #cum-float svg { width:100%; height:100%; overflow:visible; display:block; }
-      #cum-float path { transition:fill 1.4s ease; }
+      #cum-float path { transition:fill var(--cum-fade,1.4s) ease; }
 
       #cum-rz {
         position:fixed; z-index:2147483642; width:18px; height:18px;
@@ -307,7 +311,7 @@
     sendArc = mkRect();
     sendArc.setAttribute('stroke', F.colorHi); sendArc.setAttribute('stroke-linecap','round');
     sendArc.setAttribute('stroke-dasharray','100'); sendArc.setAttribute('stroke-dashoffset','100');
-    sendArc.style.transition = 'stroke-dashoffset .7s ease, stroke .5s ease';
+    sendArc.style.transition = 'stroke-dashoffset .7s ease, stroke var(--cum-fade,.5s) ease';
     svg.appendChild(sendArc);
     srSvg = svg; srTrack = tr;
     sendRingEl.appendChild(svg);
@@ -326,6 +330,7 @@
 
     document.body.appendChild(ov);
     C.applyLang(inlineEl, lang);
+    applyFade();
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -720,7 +725,7 @@
   //  SETTINGS
   // ═════════════════════════════════════════════════════════════════════════
   const SETTING_KEYS = ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_fpos','cum_lang',
-    'cum_fsize','cum_zen','cum_allpages', HINTS.cd.key, HINTS.tok.key, ...C.PER_PROVIDER_KEYS.map(K)];
+    'cum_fsize','cum_zen','cum_allpages', 'cum_show_cd', 'cum_show_tok', HINTS.cd.key, HINTS.tok.key, ...C.PER_PROVIDER_KEYS.map(K)];
 
   function loadFloatSettings() {
     if (!C.isCtxValid()) return;
@@ -742,6 +747,11 @@
           F.colorMid     = res[K('cum_color_mid')] || PC.mid;
           F.colorLo      = res[K('cum_color_lo')]  || PC.lo;
           F.colorMidPos  = num('cum_color_mid_pos', PC.midPos);
+          F.breathRate   = num('cum_breath_rate', C.MOTION_DEFAULTS.breathRate);
+          F.colorFade    = num('cum_color_fade', C.MOTION_DEFAULTS.colorFade);
+          F.showCd       = res.cum_show_cd  !== false;
+          F.showTok      = res.cum_show_tok !== false;
+          applyFade();
           F.fsize        = typeof res.cum_fsize === 'number' ? res.cum_fsize : 56;
           if (res.cum_fpos && typeof res.cum_fpos.right === 'number') {
             floatEl.style.right  = res.cum_fpos.right  + 'px';
@@ -773,6 +783,10 @@
           if (ch('cum_color_mid'))     { F.colorMid   = ch('cum_color_mid').newValue || PC.mid; recolor(); }
           if (ch('cum_color_lo'))      { F.colorLo    = ch('cum_color_lo').newValue  || PC.lo;  recolor(); }
           if (ch('cum_color_mid_pos')) { F.colorMidPos = ch('cum_color_mid_pos').newValue ?? PC.midPos; draw(); }
+          if (ch('cum_breath_rate'))   { F.breathRate = ch('cum_breath_rate').newValue ?? C.MOTION_DEFAULTS.breathRate; drawHalo(); }
+          if (ch('cum_color_fade'))    { F.colorFade  = ch('cum_color_fade').newValue  ?? C.MOTION_DEFAULTS.colorFade;  applyFade(); }
+          if ('cum_show_cd'  in changes) { F.showCd  = changes.cum_show_cd.newValue  !== false; drawInline(); }
+          if ('cum_show_tok' in changes) { F.showTok = changes.cum_show_tok.newValue !== false; drawInline(); }
           if ('cum_allpages'      in changes) { F.allPages   = !!changes.cum_allpages.newValue; }
           if ('cum_fsize'         in changes) { F.fsize      = changes.cum_fsize.newValue || 56;  applyFloatVisibility(); }
           if ('cum_lang'          in changes) { lang = changes.cum_lang.newValue || C.guessLang(navigator.languages); applyLangToUi(); draw(); }
@@ -931,18 +945,30 @@
   function drawHalo() {
     const a = S.active;
     const gain = a ? F.haloActive : F.haloIdle;
-    if (!S.loaded) { haloEl.style.animation = 'h-idle-hi 3.2s ease-in-out infinite'; haloEl.style.opacity = String(0.22 * gain); return; }
+    const breathe = (name, sec) => {
+      haloEl.style.animation = name + ' ' + (sec / (F.breathRate || 1)).toFixed(2) + 's ease-in-out infinite';
+      haloEl.style.animationPlayState = reduceMotion && reduceMotion.matches ? 'paused' : 'running';
+    };
+    if (!S.loaded) { breathe('h-idle-hi', 3.2); haloEl.style.opacity = String(0.22 * gain); return; }
     const tier = C.tierOf(S.remainPct, F.colorMidPos);
     let anim, op;
     if (a) {
-      anim = { hi: 'h-on-hi 2.6s', mid: 'h-on-mid 3.0s', lo: 'h-on-lo 2.2s', empty: 'h-on-empty 1.2s' }[tier];
+      anim = { hi: ['h-on-hi', 2.6], mid: ['h-on-mid', 3.0], lo: ['h-on-lo', 2.2], empty: ['h-on-empty', 1.2] }[tier];
       op = 1;
     } else {
-      anim = { hi: 'h-idle-hi 3.4s', mid: 'h-idle-mid 3.6s', lo: 'h-idle-lo 2.4s', empty: 'h-idle-lo 1.8s' }[tier];
+      anim = { hi: ['h-idle-hi', 3.4], mid: ['h-idle-mid', 3.6], lo: ['h-idle-lo', 2.4], empty: ['h-idle-lo', 1.8] }[tier];
       op = tier === 'mid' ? 0.48 : 0.55;
     }
-    haloEl.style.animation = anim + ' ease-in-out infinite';
+    breathe(anim[0], anim[1]);
     haloEl.style.opacity = String(op * gain * (S.stale ? 0.6 : 1));
+  }
+
+  // Colour transitions (halo, send ring, float petals) follow the user's fade time
+  function applyFade() {
+    const v = (F.colorFade || C.MOTION_DEFAULTS.colorFade) + 's';
+    const ov = document.getElementById('cum-ov');
+    if (ov) ov.style.setProperty('--cum-fade', v);
+    if (floatEl) floatEl.style.setProperty('--cum-fade', v);
   }
 
   function drawSendRing() {
@@ -953,14 +979,18 @@
 
   function drawInline() {
     if (F.zen) { inlineEl.classList.remove('on'); return; }
-    const show = S.active && S.loaded;
+    const show = S.active && S.loaded && (F.showCd || F.showTok);
     inlineEl.classList.toggle('on', show);
     if (!show) return;
+    cdSpan.style.display = F.showCd ? '' : 'none';
+    HINTS.cd.el.style.display = F.showCd ? '' : 'none';
+    tokWrap.style.display = F.showTok ? '' : 'none';
+    tokWrap.firstChild.style.display = F.showCd ? '' : 'none'; // dot separator only between two values
     cdSpan.style.color = usageColor();
     const ms = S.session?.resetMs ?? S.resetMs ?? 0;
     const now = Date.now();
     cdSpan.textContent = (ms > 0 && ms > now) ? C.fmtCountdown(ms - now) : (ms > 0 ? t('newCycle') : '—');
-    if (ms > now) showHint(HINTS.cd);
+    if (F.showCd && ms > now) showHint(HINTS.cd);
     refreshTok();
   }
 
@@ -979,7 +1009,7 @@
   }
 
   function refreshTok() {
-    if (!tokSpan) return;
+    if (!tokSpan || !F.showTok) return;
     const tok = C.estimateTokens(textOf(findInput()).replace(/\n$/, ''));
     if (tok > 0) { tokSpan.textContent = '~' + C.fmtN(tok) + ' tok'; tokWrap.classList.add('on'); showHint(HINTS.tok); }
     else tokWrap.classList.remove('on');
@@ -1109,6 +1139,7 @@
     if (!document.body) { setTimeout(init, 50); return; }
     injectStyles(); createOverlay(); createFloat(); createResizeHandle();
     setupStorageListener(); setupMessageListener();
+    try { reduceMotion && reduceMotion.addEventListener('change', drawHalo); } catch (e) {}
     loadFloatSettings(); pullData(); draw();
     startRaf(); schedulePull();
     chatgptSelfReport();

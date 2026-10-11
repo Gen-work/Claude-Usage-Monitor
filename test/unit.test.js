@@ -203,7 +203,22 @@ test('settingKey keeps legacy keys for Claude and suffixes other providers', () 
   assert.equal(C.settingKey('cum_color_hi', undefined), 'cum_color_hi');
   assert.equal(C.settingKey('cum_color_hi', 'chatgpt'), 'cum_color_hi_chatgpt');
   for (const p of C.PROVIDERS) assert.ok(C.PROVIDER_COLORS[p] && /^#/.test(C.PROVIDER_COLORS[p].hi), `colours for ${p}`);
-  assert.equal(C.PER_PROVIDER_KEYS.length, 6);
+  assert.equal(C.PER_PROVIDER_KEYS.length, 8);
+});
+test('style presets store every effect parameter for the chosen provider', () => {
+  const fields = ['hi', 'mid', 'lo', 'midPos', 'haloActive', 'haloIdle', 'breathRate', 'colorFade'];
+  for (const [id, p] of Object.entries(C.STYLE_PRESETS)) {
+    for (const f of fields) assert.ok(p[f] !== undefined, `${id}.${f}`);
+    assert.ok(p.breathRate >= 0.5 && p.breathRate <= 2, `${id} breathRate within the slider range`);
+    assert.ok(p.colorFade >= 0.2 && p.colorFade <= 4, `${id} colorFade within the slider range`);
+  }
+  const cl = C.presetToStorage(C.STYLE_PRESETS.neon, 'claude');
+  const gp = C.presetToStorage(C.STYLE_PRESETS.neon, 'chatgpt');
+  assert.equal(cl.cum_color_hi, C.STYLE_PRESETS.neon.hi);
+  assert.equal(gp.cum_breath_rate_chatgpt, C.STYLE_PRESETS.neon.breathRate);
+  // every key a preset writes is one the reset button clears
+  const resettable = new Set(C.PER_PROVIDER_KEYS.map(k => C.settingKey(k, 'chatgpt')));
+  for (const k of Object.keys(gp)) assert.ok(resettable.has(k), k);
 });
 test('USAGE_KEY keeps the legacy Claude storage key', () => {
   assert.equal(C.USAGE_KEY.claude, 'usageData');

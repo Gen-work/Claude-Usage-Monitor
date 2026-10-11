@@ -35,7 +35,28 @@
   };
   // Settings that are stored once per provider. Claude keeps the legacy
   // un-suffixed keys so existing installs keep their customisation.
-  const PER_PROVIDER_KEYS = ['cum_halo_active', 'cum_halo_idle', 'cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos'];
+  const PER_PROVIDER_KEYS = ['cum_halo_active', 'cum_halo_idle', 'cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos',
+    'cum_breath_rate', 'cum_color_fade'];
+  // Motion defaults: breath rate is a multiplier on the halo's breathing speed;
+  // colour fade is how many seconds a colour change takes to blend in.
+  const MOTION_DEFAULTS = { breathRate: 1.0, colorFade: 1.4 };
+  // Style presets: every effect parameter is stored, not just a name.
+  // Applying one writes the current provider's keys; "Reset colors" undoes it.
+  const STYLE_PRESETS = {
+    neon:    { hi: '#00f0ff', mid: '#b04dff', lo: '#ff2e88', midPos: 0.4, haloActive: 1.0, haloIdle: 0.7,  breathRate: 1.4, colorFade: 0.6 },
+    cyber:   { hi: '#f9f002', mid: '#00e0ff', lo: '#ff003c', midPos: 0.5, haloActive: 1.0, haloIdle: 0.6,  breathRate: 1.8, colorFade: 0.3 },
+    natural: { hi: '#7bc47f', mid: '#d9b26f', lo: '#d9776a', midPos: 0.4, haloActive: 0.7, haloIdle: 0.35, breathRate: 0.7, colorFade: 2.4 },
+  };
+  // Map a preset onto storage keys for one provider
+  function presetToStorage(preset, provider) {
+    const k = (b) => settingKey(b, provider);
+    return {
+      [k('cum_color_hi')]: preset.hi, [k('cum_color_mid')]: preset.mid, [k('cum_color_lo')]: preset.lo,
+      [k('cum_color_mid_pos')]: preset.midPos,
+      [k('cum_halo_active')]: preset.haloActive, [k('cum_halo_idle')]: preset.haloIdle,
+      [k('cum_breath_rate')]: preset.breathRate, [k('cum_color_fade')]: preset.colorFade,
+    };
+  }
   function settingKey(base, provider) {
     return (!provider || provider === 'claude') ? base : base + '_' + provider;
   }
@@ -300,6 +321,7 @@
 
   root.CUM = {
     PETALS, CW, EMPTY_PETAL, DEFAULT_COLORS, PROVIDER_COLORS, PER_PROVIDER_KEYS, settingKey,
+    MOTION_DEFAULTS, STYLE_PRESETS, presetToStorage,
     PROVIDERS, PROVIDER_LABEL, USAGE_KEY, detectProvider, providerFromUrl, MENU_THEMES, applyMenuTheme,
     LOCALE, localeOf, dirOf, guessLang, fontStack, applyLang,
     makeT, ICONS, escapeHtml,

@@ -38,6 +38,8 @@
     F.colorMid    = res[K('cum_color_mid')] || D.mid;
     F.colorLo     = res[K('cum_color_lo')]  || D.lo;
     F.colorMidPos = num('cum_color_mid_pos', D.midPos);
+    F.colorFade   = num('cum_color_fade', C.MOTION_DEFAULTS.colorFade);
+    if (floatEl) floatEl.style.setProperty('--cum-fade', F.colorFade + 's');
   }
   function loadProviderSettings() {
     if (!C.isCtxValid()) return;
@@ -82,7 +84,7 @@
       }
       #cum-float-ext:active { cursor:grabbing; }
       #cum-float-ext svg { width:100%; height:100%; overflow:visible; display:block; }
-      #cum-float-ext path { transition:fill 1.4s ease; }
+      #cum-float-ext path { transition:fill var(--cum-fade,1.4s) ease; }
 
       @keyframes cum-ext-warn  { 0%,100%{opacity:1} 50%{opacity:.4} }
       @keyframes cum-ext-blink { 0%,49%{opacity:1} 50%,100%{opacity:.12} }

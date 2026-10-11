@@ -188,6 +188,15 @@
       background: transparent; color: rgba(255,255,255,.5); font-size: 11px;
       cursor: pointer; transition: all .15s ease;
     }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 14px 8px; margin: 0 8px; }
+    .preset-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px 4px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,.1); font-family: inherit;
+      background: transparent; color: rgba(255,255,255,.65); font-size: 11px; cursor: pointer; transition: all .15s ease;
+    }
+    .preset-btn:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.85); }
+    .preset-btn.active { border-color: var(--accent); color: var(--accent); }
+    .preset-swatch { width: 22px; height: 10px; border-radius: 5px; flex-shrink: 0; }
     .lang-btn:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.7); }
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(var(--cum-ui-accent-rgb, 217,119,87),.08); }
 
@@ -297,6 +306,33 @@
 
     <div class="divider"></div>
 
+    <!-- Inline readout next to the chat input -->
+    <div class="section-title" data-i18n="readoutSection">Input readout</div>
+    <div class="setting-row" id="cd-row">
+      <div class="setting-info">
+        <div class="s-label" data-i18n="showCountdown"></div>
+        <div class="s-sub" data-i18n="showCountdownSub"></div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-cd" checked>
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="setting-row" id="tok-row">
+      <div class="setting-info">
+        <div class="s-label" data-i18n="showTok"></div>
+        <div class="s-sub" data-i18n="showTokSub"></div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-tok" checked>
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
     <!-- Halo settings -->
     <div class="section-title halo-title">
       <span data-i18n="haloSection" id="halo-title-label">Halo settings</span>
@@ -312,6 +348,17 @@
       <input type="range" id="halo-idle-slider" min="0" max="100" value="50" step="5">
       <span class="slider-val" id="halo-idle-label">50%</span>
     </div>
+    <div class="slider-row">
+      <label for="breath-slider" data-i18n="breathRate">Breathing</label>
+      <input type="range" id="breath-slider" min="50" max="200" value="100" step="10">
+      <span class="slider-val" id="breath-label">1.0×</span>
+    </div>
+    <div class="slider-row">
+      <label for="fade-slider" data-i18n="colorFade">Colour fade</label>
+      <input type="range" id="fade-slider" min="2" max="40" value="14" step="1">
+      <span class="slider-val" id="fade-label">1.4 s</span>
+    </div>
+    <div class="preset-row" id="preset-row" role="group"></div>
     <div class="gradient-row">
       <span class="gradient-icon" id="icon-bat-full"></span>
       <div class="gradient-bar" id="gradient-bar">
