@@ -2,6 +2,27 @@
 
 [日本語](#日本語) · [English](#english) · [中文](#中文)
 
+<p align="center">
+  <img src="docs/media/hero.gif" width="720" alt="Typing in the Claude composer: the glow brightens and the countdown and draft token estimate appear next to the input">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/quota-sweep.gif" alt="Remaining quota from 100% to 2%: the glow and send-button ring move from full to low colour"><br><sub>残量 → 色 / Quota → colour / 余量 → 颜色 · <a href="docs/media/quota-sweep.mp4">MP4</a></sub></td>
+    <td width="50%"><img src="docs/media/presets.gif" alt="Switching style presets: default, Neon, Cyberpunk, Fresh and natural"><br><sub>スタイルプリセット / Style presets / 风格预设</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/chatgpt.png" alt="ChatGPT composer with a violet glow and a circular send-button ring"><br><sub>ChatGPT</sub></td>
+    <td><img src="docs/media/first-run-zh.png" alt="First-run hint: one short line after the countdown and the token estimate"><br><sub>初回ヒント / First-run hint / 首次提示</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/popup-claude.png" width="49%" alt="Popup on a Claude tab: orange accent"> <img src="docs/media/popup-chatgpt.png" width="49%" alt="Popup on a ChatGPT tab: black and white with a teal accent"></td>
+    <td><img src="docs/media/menu-claude.png" width="49%" alt="Right-click menu on Claude, orange accent"> <img src="docs/media/menu-chatgpt.png" width="49%" alt="Right-click menu on ChatGPT, teal accent"><br><sub>ポップアップ・右クリックメニュー / Popup &amp; menus / 弹窗与右键菜单</sub></td>
+  </tr>
+</table>
+
+<sub>画像はすべて <code>test/harness.html</code> の模擬ページから <code>scripts/capture-media.js</code> で生成したもので、実際のアカウントのデータではありません。 / All media is generated from the mock page in <code>test/harness.html</code> by <code>scripts/capture-media.js</code>; no real account data. / 以上素材均由 <code>scripts/capture-media.js</code> 从 <code>test/harness.html</code> 模拟页生成，不含真实账户数据。</sub>
+
 ---
 
 ## 日本語
@@ -16,10 +37,16 @@
 
 - **入力欄の光（ハロー）**：残量に応じて色と明るさが変わります。入力中は明るく、待機中は控えめに表示し、ページのライト／ダークテーマに合わせて文字色を調整します。色と明るさは Claude と ChatGPT で個別に設定できます。ChatGPT の既定色は紫です。
 - **送信ボタンの残量ゲージ**：ボタンの周囲に残量を表示します。Claude では角丸の四角形、ChatGPT では円形になります。
-- **入力中の情報表示**：次のリセットまでの時間と、おおよそのトークン数を表示します。中国語・日本語・韓国語（CJK）の文字は、1 文字あたり約 1.3 トークンとして計算します。実際のトークナイザーによる計測値ではありません。
+- **入力中の情報表示**：次のリセットまでの時間と、おおよそのトークン数を表示します。中国語・日本語・韓国語（CJK）の文字は、1 文字あたり約 1.3 トークンとして計算します。実際のトークナイザーによる計測値ではありません。普段は数字だけを表示し、初めて表示されたときだけ同じ行に短い説明が出ます。カウントダウンとトークン数は個別にオフにできます。
+- **スタイルとモーション**：呼吸の速さ（0.5×–2.0×）と色の切り替え時間（0.2–4.0 秒）を調整できます。プリセット（ネオン、サイバーパンク、ナチュラル）は色・明るさ・動きをまとめて適用し、「スタイルをリセット」で元に戻せます。OS の「視差効果を減らす」設定がオンのときは、光の呼吸を止めます。
+- **サービスごとの配色**：メニューとポップアップは Claude ではオレンジ、ChatGPT では白黒とティールのアクセントになります。
 - **フローティングアイコン**：12 枚の花びらを使った Claude のマークで残量を表示します。ドラッグで移動でき、サイズ変更や右クリックでの設定にも対応しています。全ページでの表示を有効にすると、ほかのサイトでも Claude または ChatGPT の利用状況を確認できます。
 - **ポップアップ**：Claude と ChatGPT を切り替え、短期・週間の残量とリセットまでの時間を確認できます。
 - **8 言語の UI**：中国語、英語、日本語、韓国語、フランス語、ロシア語、スペイン語、アラビア語に対応しています。アラビア語は右から左への表示に対応し、初回起動時はブラウザの言語に合わせて選択します。
+
+### 今後の構想
+
+常駐の花びら、入力欄の光、送信ボタンのリングを、それぞれ異なる役割を持つ表示に分けていく予定です。検討中の項目：二重リングの送信ボタン、コンテキストウィンドウの表示、プリセット「鋼鉄洪流」、水墨のにじみ効果、炭酸のように揺れる入力欄、動きで操作を伝えるカラーピッカー、アカウントの吹き出し色への追従、Gemini 対応、Document Picture-in-Picture による常時表示、タブとタブグループの色。信頼できるデータがない値は表示しません。詳しくは [docs/ROADMAP.md](docs/ROADMAP.md)（中国語）をご覧ください。
 
 ### インストール
 
@@ -98,6 +125,8 @@ npm run package   # packages/ に ZIP と SHA-256 チェックサムを生成
 
 表示確認用サーバーを起動したら、`http://localhost:8765/test/harness.html?site=claude&lang=ja&theme=light` を開きます。`site` は `claude` / `chatgpt` / `other`、`lang` は UI 言語、`theme` は `light` / `dark` に切り替えられます。
 
+README の画像・GIF・動画は `node scripts/capture-media.js` で再生成できます（Playwright と ffmpeg が必要です）。
+
 GitHub Actions の CI は、push とプルリクエストごとにテストとパッケージ作成を実行し、ZIP を `Claude-Usage-Monitor-chrome-edge` アーティファクトとして保存します。従来の `scripts/package.ps1` もパッケージ作成の入口として利用できます。
 
 ### リリース
@@ -128,10 +157,16 @@ Opening a separate usage page to check how much allowance is left interrupts the
 
 - **Input halo**: the glow changes colour and brightness with your remaining allowance. It brightens while you type and softens when idle, with text colours adjusted to the page's light or dark theme. Configure colours and brightness separately for Claude and ChatGPT; ChatGPT defaults to purple.
 - **Send-button gauge**: shows the remaining allowance around the send button, following its shape: a rounded square on Claude and a circle on ChatGPT.
-- **Typing indicators**: show a countdown to the next reset and a rough token estimate. Chinese, Japanese and Korean (CJK) characters are estimated at about 1.3 tokens each. This is an approximation, not a measurement from the model's tokenizer.
+- **Typing indicators**: show a countdown to the next reset and a rough token estimate. Chinese, Japanese and Korean (CJK) characters are estimated at about 1.3 tokens each. This is an approximation, not a measurement from the model's tokenizer. The readout stays numbers-only; the first time each number appears, a short note follows it on the same line and then fades. The countdown and the token estimate can each be turned off.
+- **Style and motion**: adjust breathing speed (0.5×–2.0×) and colour fade time (0.2–4.0 s). Presets (Neon, Cyberpunk, Fresh & natural) apply colours, glow and motion together; "Reset style" undoes them. When the OS asks for reduced motion, the halo stops breathing.
+- **Provider-aware colours**: menus and the popup use orange on Claude and black and white with a teal accent on ChatGPT.
 - **Floating icon**: a 12-petal Claude mark shows the remaining allowance. Drag it to move it, resize it, or right-click to change its settings. Enable display on all pages to view either Claude or ChatGPT usage while browsing other sites.
 - **Popup**: switch between Claude and ChatGPT to check the short-term and weekly allowances and reset countdowns.
 - **8 interface languages**: Chinese, English, Japanese, Korean, French, Russian, Spanish and Arabic. Arabic supports right-to-left layout. The initial language is selected from your browser settings.
+
+### Roadmap
+
+The resident petals, the input halo and the send-button ring will become three distinct layers, each with its own job. On the list: a dual-ring send button, a context-window indicator, a "Steel Torrent" preset, an ink-wash effect, a soda-shake input, a colour picker that explains itself through motion, matching your account's bubble colour, Gemini, an always-on Document Picture-in-Picture window, and tab and tab-group colours. Values without a reliable data source will not be shown. Details: [docs/ROADMAP.md](docs/ROADMAP.md) (Chinese).
 
 ### Installation
 
@@ -210,6 +245,8 @@ Run the packaging tests with `python3 -m unittest discover -s test -p 'test_pack
 
 Once the visual test server is running, open `http://localhost:8765/test/harness.html?site=claude&lang=en&theme=light`. Set `site` to `claude`, `chatgpt` or `other`; use `lang` to select the interface language and `theme` to choose `light` or `dark`.
 
+Regenerate the README screenshots, GIFs and video with `node scripts/capture-media.js` (requires Playwright and ffmpeg).
+
 GitHub Actions CI runs tests and builds packages on each push and pull request. ZIPs are uploaded as the `Claude-Usage-Monitor-chrome-edge` artifact. The existing `scripts/package.ps1` entry point is also supported.
 
 ### Releases
@@ -240,10 +277,16 @@ To run the Release workflow manually, specify an existing version tag whose comm
 
 - **输入框光环**：颜色和亮度随剩余额度变化，输入时更亮，待机时更柔和，并根据页面的明暗主题调整文字颜色。Claude 和 ChatGPT 的颜色、亮度可分别设置；ChatGPT 默认使用紫色。
 - **发送按钮额度指示**：在发送按钮周围显示剩余额度，形状与按钮保持一致：Claude 为圆角方形，ChatGPT 为圆形。
-- **输入提示**：显示下次重置的倒计时和预估 token 数。中日韩文字（CJK）按每字约 1.3 个 token 估算，仅供参考，并非模型分词器的实际计数。
+- **输入提示**：显示下次重置的倒计时和预估 token 数。中日韩文字（CJK）按每字约 1.3 个 token 估算，仅供参考，并非模型分词器的实际计数。平时只显示数字；每个数字第一次出现时，同一行会跟一句简短说明，随后淡出。倒计时和 token 估算可分别关闭。
+- **样式与动效**：可调呼吸频率（0.5×–2.0×）和颜色过渡时间（0.2–4.0 秒）。风格预设（霓虹幻彩、赛博朋克、清新自然）一次应用颜色、亮度与动效，「重置样式」可撤销。系统开启「减少动态效果」时，光环停止呼吸。
+- **按服务配色**：菜单和弹窗在 Claude 上为橙色，在 ChatGPT 上为黑白底配青绿强调色。
 - **悬浮图标**：用 12 瓣 Claude 标志显示剩余额度，支持拖动、调整大小和右键设置。开启跨页显示后，在其他网站也能查看 Claude 或 ChatGPT 的用量。
 - **弹出面板**：切换 Claude 和 ChatGPT，查看短期、每周剩余额度及重置倒计时。
 - **8 种界面语言**：中文、英语、日语、韩语、法语、俄语、西班牙语和阿拉伯语。阿拉伯语支持从右向左布局；首次使用时根据浏览器语言自动选择。
+
+### 展望
+
+常驻花瓣、输入光环、发送圆环将逐步成为三个职责不同的视觉层级。计划中：双环发送按钮、上下文窗口指示、「钢铁洪流」预设、水墨晕染、输入框汽水摇晃、用动作说明自己的调色盘、跟随账号气泡颜色、Gemini、Document Picture-in-Picture 常驻窗口、标签页与标签分组配色。没有可靠数据来源的数值不会显示。完整清单见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
 ### 安装
 
@@ -321,6 +364,8 @@ npm run package   # 在 packages/ 中生成 ZIP 和 SHA-256 校验文件
 运行 `python3 -m unittest discover -s test -p 'test_package.py'` 可执行打包测试。Windows 可根据环境将 `python3` 替换为 `python` 或 `py`。
 
 启动界面测试服务器后，打开 `http://localhost:8765/test/harness.html?site=claude&lang=zh&theme=light`。`site` 可选 `claude`、`chatgpt` 或 `other`；`lang` 指定界面语言；`theme` 可选 `light` 或 `dark`。
+
+README 中的截图、GIF 和视频可用 `node scripts/capture-media.js` 重新生成（需要 Playwright 和 ffmpeg）。
 
 GitHub Actions CI 会在每次 push 和拉取请求时运行测试、构建安装包，并将 ZIP 上传为 `Claude-Usage-Monitor-chrome-edge` 构建产物。原有的 `scripts/package.ps1` 打包入口仍可使用。
 

@@ -27,12 +27,22 @@
     haloActive: 1.0, haloIdle: 0.5,
     colorHi: PC.hi, colorMid: PC.mid, colorLo: PC.lo,
     colorMidPos: PC.midPos, fsize: 56,
+    breathRate: C.MOTION_DEFAULTS.breathRate, colorFade: C.MOTION_DEFAULTS.colorFade,
+    showCd: true, showTok: true,
   };
+  // Respect the OS "reduce motion" setting: the halo stops breathing but keeps its colour
+  const reduceMotion = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)'); } catch (e) { return null; } })();
   const usageColor = () => C.usageColor(F, S.remainPct);
   const safeSet = C.safeSet;
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   let haloEl, sendRingEl, sendArc, srSvg, srTrack, inlineEl, cdSpan, tokSpan, tokWrap;
+  // First-run hints: one short line in the chip's own font, shown once per install, then gone
+  const HINT_MS = 8000;
+  const HINTS = {
+    cd:  { key: 'cum_hint_cd',  text: 'hintCountdown', el: null, seen: true, timer: null },
+    tok: { key: 'cum_hint_tok', text: 'hintTok',       el: null, seen: true, timer: null },
+  };
   let floatEl, floatPaths = [], floatTipEl, ctxEl, rzEl;
   let activeSubMenus = [];
   let srPrevVisible = false;
@@ -134,7 +144,7 @@
     s.textContent = `
       #cum-ov { position:fixed; inset:0; pointer-events:none; z-index:2147483640; overflow:visible; }
 
-      #cum-halo { position:absolute; border-radius:20px; pointer-events:none; transition:box-shadow 1s ease,opacity .8s ease; }
+      #cum-halo { position:absolute; border-radius:20px; pointer-events:none; transition:box-shadow var(--cum-fade,1s) ease,opacity .8s ease; }
 
       #cum-sr { position:absolute; width:40px; height:40px; pointer-events:none; opacity:0; }
       #cum-sr.ld  { opacity:0.5; }
@@ -156,7 +166,11 @@
         overflow:hidden; max-width:0; opacity:0;
         transition:max-width .25s ease, opacity .2s ease;
       }
-      #cum-il .tok-wrap.on { max-width:120px; opacity:1; }
+      #cum-il .tok-wrap.on { max-width:320px; opacity:1; }
+      #cum-il .hint { display:none; color:var(--cum-fg2); opacity:0; transition:opacity .3s ease; }
+      #cum-il .hint.on { display:inline; animation:cum-hint-in .3s ease forwards; }
+      #cum-il .hint.out { opacity:0 !important; animation:none; }
+      @keyframes cum-hint-in { from { opacity:0; } to { opacity:1; } }
 
       #cum-float {
         position:fixed; z-index:2147483641;
@@ -164,7 +178,7 @@
       }
       #cum-float:active { cursor:grabbing; }
       #cum-float svg { width:100%; height:100%; overflow:visible; display:block; }
-      #cum-float path { transition:fill 1.4s ease; }
+      #cum-float path { transition:fill var(--cum-fade,1.4s) ease; }
 
       #cum-rz {
         position:fixed; z-index:2147483642; width:18px; height:18px;
@@ -177,7 +191,7 @@
         position:fixed; z-index:2147483643; padding:5px 10px; border-radius:8px;
         font:12px/1.5 ${FONT};
         background:rgba(16,14,12,.88); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-        border:1px solid rgba(217,119,87,.2); color:rgba(255,255,255,.85);
+        border:1px solid rgba(var(--cum-ui-accent-rgb, 217,119,87),.2); color:rgba(255,255,255,.85);
         white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .18s ease;
       }
       #cum-ftip .tp { font-weight:600; }
@@ -185,7 +199,7 @@
 
       #cum-ctx, .cum-submenu-fixed {
         position:fixed; min-width:150px; border-radius:10px;
-        background:rgba(22,20,18,.94); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+        background:var(--cum-ui-menu-bg, rgba(22,20,18,.94)); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
         border:1px solid rgba(255,255,255,.1); box-shadow:0 8px 32px rgba(0,0,0,.5);
         overflow:hidden; display:none; z-index:2147483644;
         font:13px/1 ${FONT}; color:rgba(255,255,255,.82);
@@ -198,9 +212,9 @@
       .cum-ctx-item:hover { background:rgba(255,255,255,.08); }
       .cum-ctx-item.danger { color:#e05252; }
       .cum-ctx-sep { height:1px; background:rgba(255,255,255,.08); margin:2px 0; }
-      .cum-ctx-sub-hdr { font-size:11px; color:rgba(255,255,255,.35); padding:8px 14px 4px; cursor:default; }
-      .cum-ctx-check { color:#d97757; flex-shrink:0; display:inline-flex; }
-      .cum-ctx-arrow { color:rgba(255,255,255,.3); flex-shrink:0; display:inline-flex; }
+      .cum-ctx-sub-hdr { font-size:11px; color:rgba(255,255,255,.5); padding:8px 14px 4px; cursor:default; }
+      .cum-ctx-check { color:var(--cum-ui-accent, #d97757); flex-shrink:0; display:inline-flex; }
+      .cum-ctx-arrow { color:rgba(255,255,255,.5); flex-shrink:0; display:inline-flex; }
       [dir="rtl"] .cum-ctx-arrow svg { transform:scaleX(-1); }
 
       .cum-ctx-slider-row { padding:6px 14px 10px; display:flex; align-items:center; gap:8px; }
@@ -210,9 +224,9 @@
       }
       .cum-ctx-slider-row input[type=range]::-webkit-slider-thumb {
         appearance:none; -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
-        background:#d97757; cursor:pointer;
+        background:var(--cum-ui-accent, #d97757); cursor:pointer;
       }
-      .cum-ctx-slider-val { font-size:11px; color:rgba(255,255,255,.4); width:28px; text-align:end; flex-shrink:0; font-variant-numeric:tabular-nums; }
+      .cum-ctx-slider-val { font-size:11px; color:rgba(255,255,255,.65); width:28px; text-align:end; flex-shrink:0; font-variant-numeric:tabular-nums; }
 
       .cum-ctx-grow { padding:6px 14px 8px; display:flex; align-items:center; gap:6px; position:relative; color:rgba(255,255,255,.6); }
       .cum-ctx-gbar { flex:1; height:16px; border-radius:8px; position:relative; border:1px solid rgba(255,255,255,.1); }
@@ -241,7 +255,7 @@
       .cum-ctx-creset {
         padding:4px 8px; border-radius:7px; font:11px ${FONT};
         background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
-        color:rgba(255,255,255,.35); cursor:pointer;
+        color:rgba(255,255,255,.5); cursor:pointer;
       }
       .cum-ctx-creset:hover { background:rgba(224,82,82,.1); border-color:rgba(224,82,82,.2); color:rgba(224,82,82,.7); }
     `;
@@ -269,7 +283,7 @@
 
   // Apply the UI language to every root element we own (font + direction)
   function applyLangToUi() {
-    [inlineEl, floatTipEl, ctxEl, ...activeSubMenus].forEach(el => C.applyLang(el, lang));
+    [inlineEl, floatTipEl, ctxEl, ...activeSubMenus].forEach(el => { C.applyLang(el, lang); C.applyMenuTheme(el, PROVIDER); });
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -297,7 +311,7 @@
     sendArc = mkRect();
     sendArc.setAttribute('stroke', F.colorHi); sendArc.setAttribute('stroke-linecap','round');
     sendArc.setAttribute('stroke-dasharray','100'); sendArc.setAttribute('stroke-dashoffset','100');
-    sendArc.style.transition = 'stroke-dashoffset .7s ease, stroke .5s ease';
+    sendArc.style.transition = 'stroke-dashoffset .7s ease, stroke var(--cum-fade,.5s) ease';
     svg.appendChild(sendArc);
     srSvg = svg; srTrack = tr;
     sendRingEl.appendChild(svg);
@@ -308,12 +322,15 @@
     tokWrap = document.createElement('div'); tokWrap.className = 'tok-wrap';
     const sep = document.createElement('div'); sep.className = 'sep';
     tokSpan = document.createElement('span'); tokSpan.className = 'tok';
-    tokWrap.appendChild(sep); tokWrap.appendChild(tokSpan);
-    inlineEl.appendChild(cdSpan); inlineEl.appendChild(tokWrap);
+    HINTS.cd.el  = document.createElement('span'); HINTS.cd.el.className  = 'hint';
+    HINTS.tok.el = document.createElement('span'); HINTS.tok.el.className = 'hint';
+    tokWrap.appendChild(sep); tokWrap.appendChild(tokSpan); tokWrap.appendChild(HINTS.tok.el);
+    inlineEl.appendChild(cdSpan); inlineEl.appendChild(HINTS.cd.el); inlineEl.appendChild(tokWrap);
     ov.appendChild(inlineEl);
 
     document.body.appendChild(ov);
     C.applyLang(inlineEl, lang);
+    applyFade();
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -489,7 +506,7 @@
     activeSubMenus.forEach(s => { try { s.remove(); } catch(e){} });
     activeSubMenus = [];
     ctxEl.innerHTML = '';
-    C.applyLang(ctxEl, lang);
+    C.applyLang(ctxEl, lang); C.applyMenuTheme(ctxEl, PROVIDER);
 
     const item = (label, cls, action, checked, parent) => {
       const d = document.createElement('div');
@@ -515,7 +532,7 @@
       wrap.appendChild(sp); wrap.appendChild(ar);
       const sub = document.createElement('div');
       sub.className = 'cum-submenu-fixed';
-      C.applyLang(sub, lang);
+      C.applyLang(sub, lang); C.applyMenuTheme(sub, PROVIDER);
       document.body.appendChild(sub);
       activeSubMenus.push(sub);
       let hideTimer = null;
@@ -708,7 +725,7 @@
   //  SETTINGS
   // ═════════════════════════════════════════════════════════════════════════
   const SETTING_KEYS = ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_fpos','cum_lang',
-    'cum_fsize','cum_zen','cum_allpages', ...C.PER_PROVIDER_KEYS.map(K)];
+    'cum_fsize','cum_zen','cum_allpages', 'cum_show_cd', 'cum_show_tok', HINTS.cd.key, HINTS.tok.key, ...C.PER_PROVIDER_KEYS.map(K)];
 
   function loadFloatSettings() {
     if (!C.isCtxValid()) return;
@@ -721,6 +738,8 @@
           F.watermark    = !!res.cum_fwatermark;
           F.zen          = !!res.cum_zen;
           F.allPages     = !!res.cum_allpages;
+          HINTS.cd.seen  = !!res[HINTS.cd.key];
+          HINTS.tok.seen = !!res[HINTS.tok.key];
           const num = (k, d) => typeof res[K(k)] === 'number' ? res[K(k)] : d;
           F.haloActive   = num('cum_halo_active', 1.0);
           F.haloIdle     = num('cum_halo_idle', 0.5);
@@ -728,6 +747,11 @@
           F.colorMid     = res[K('cum_color_mid')] || PC.mid;
           F.colorLo      = res[K('cum_color_lo')]  || PC.lo;
           F.colorMidPos  = num('cum_color_mid_pos', PC.midPos);
+          F.breathRate   = num('cum_breath_rate', C.MOTION_DEFAULTS.breathRate);
+          F.colorFade    = num('cum_color_fade', C.MOTION_DEFAULTS.colorFade);
+          F.showCd       = res.cum_show_cd  !== false;
+          F.showTok      = res.cum_show_tok !== false;
+          applyFade();
           F.fsize        = typeof res.cum_fsize === 'number' ? res.cum_fsize : 56;
           if (res.cum_fpos && typeof res.cum_fpos.right === 'number') {
             floatEl.style.right  = res.cum_fpos.right  + 'px';
@@ -759,6 +783,10 @@
           if (ch('cum_color_mid'))     { F.colorMid   = ch('cum_color_mid').newValue || PC.mid; recolor(); }
           if (ch('cum_color_lo'))      { F.colorLo    = ch('cum_color_lo').newValue  || PC.lo;  recolor(); }
           if (ch('cum_color_mid_pos')) { F.colorMidPos = ch('cum_color_mid_pos').newValue ?? PC.midPos; draw(); }
+          if (ch('cum_breath_rate'))   { F.breathRate = ch('cum_breath_rate').newValue ?? C.MOTION_DEFAULTS.breathRate; drawHalo(); }
+          if (ch('cum_color_fade'))    { F.colorFade  = ch('cum_color_fade').newValue  ?? C.MOTION_DEFAULTS.colorFade;  applyFade(); }
+          if ('cum_show_cd'  in changes) { F.showCd  = changes.cum_show_cd.newValue  !== false; drawInline(); }
+          if ('cum_show_tok' in changes) { F.showTok = changes.cum_show_tok.newValue !== false; drawInline(); }
           if ('cum_allpages'      in changes) { F.allPages   = !!changes.cum_allpages.newValue; }
           if ('cum_fsize'         in changes) { F.fsize      = changes.cum_fsize.newValue || 56;  applyFloatVisibility(); }
           if ('cum_lang'          in changes) { lang = changes.cum_lang.newValue || C.guessLang(navigator.languages); applyLangToUi(); draw(); }
@@ -917,18 +945,30 @@
   function drawHalo() {
     const a = S.active;
     const gain = a ? F.haloActive : F.haloIdle;
-    if (!S.loaded) { haloEl.style.animation = 'h-idle-hi 3.2s ease-in-out infinite'; haloEl.style.opacity = String(0.22 * gain); return; }
+    const breathe = (name, sec) => {
+      haloEl.style.animation = name + ' ' + (sec / (F.breathRate || 1)).toFixed(2) + 's ease-in-out infinite';
+      haloEl.style.animationPlayState = reduceMotion && reduceMotion.matches ? 'paused' : 'running';
+    };
+    if (!S.loaded) { breathe('h-idle-hi', 3.2); haloEl.style.opacity = String(0.22 * gain); return; }
     const tier = C.tierOf(S.remainPct, F.colorMidPos);
     let anim, op;
     if (a) {
-      anim = { hi: 'h-on-hi 2.6s', mid: 'h-on-mid 3.0s', lo: 'h-on-lo 2.2s', empty: 'h-on-empty 1.2s' }[tier];
+      anim = { hi: ['h-on-hi', 2.6], mid: ['h-on-mid', 3.0], lo: ['h-on-lo', 2.2], empty: ['h-on-empty', 1.2] }[tier];
       op = 1;
     } else {
-      anim = { hi: 'h-idle-hi 3.4s', mid: 'h-idle-mid 3.6s', lo: 'h-idle-lo 2.4s', empty: 'h-idle-lo 1.8s' }[tier];
+      anim = { hi: ['h-idle-hi', 3.4], mid: ['h-idle-mid', 3.6], lo: ['h-idle-lo', 2.4], empty: ['h-idle-lo', 1.8] }[tier];
       op = tier === 'mid' ? 0.48 : 0.55;
     }
-    haloEl.style.animation = anim + ' ease-in-out infinite';
+    breathe(anim[0], anim[1]);
     haloEl.style.opacity = String(op * gain * (S.stale ? 0.6 : 1));
+  }
+
+  // Colour transitions (halo, send ring, float petals) follow the user's fade time
+  function applyFade() {
+    const v = (F.colorFade || C.MOTION_DEFAULTS.colorFade) + 's';
+    const ov = document.getElementById('cum-ov');
+    if (ov) ov.style.setProperty('--cum-fade', v);
+    if (floatEl) floatEl.style.setProperty('--cum-fade', v);
   }
 
   function drawSendRing() {
@@ -939,20 +979,39 @@
 
   function drawInline() {
     if (F.zen) { inlineEl.classList.remove('on'); return; }
-    const show = S.active && S.loaded;
+    const show = S.active && S.loaded && (F.showCd || F.showTok);
     inlineEl.classList.toggle('on', show);
     if (!show) return;
+    cdSpan.style.display = F.showCd ? '' : 'none';
+    HINTS.cd.el.style.display = F.showCd ? '' : 'none';
+    tokWrap.style.display = F.showTok ? '' : 'none';
+    tokWrap.firstChild.style.display = F.showCd ? '' : 'none'; // dot separator only between two values
     cdSpan.style.color = usageColor();
     const ms = S.session?.resetMs ?? S.resetMs ?? 0;
     const now = Date.now();
     cdSpan.textContent = (ms > 0 && ms > now) ? C.fmtCountdown(ms - now) : (ms > 0 ? t('newCycle') : '—');
+    if (F.showCd && ms > now) showHint(HINTS.cd);
     refreshTok();
   }
 
+  // Show a hint once; after HINT_MS it fades out and is remembered as seen
+  function showHint(h) {
+    if (!h.el || h.seen) return;
+    h.el.textContent = t(h.text);
+    if (h.timer) return;
+    h.el.classList.remove('out'); h.el.classList.add('on');
+    h.timer = setTimeout(() => {
+      h.seen = true;
+      h.el.classList.add('out');
+      setTimeout(() => h.el.classList.remove('on', 'out'), 300);
+      try { if (C.isCtxValid()) chrome.storage.local.set({ [h.key]: true }); } catch (e) {}
+    }, HINT_MS);
+  }
+
   function refreshTok() {
-    if (!tokSpan) return;
+    if (!tokSpan || !F.showTok) return;
     const tok = C.estimateTokens(textOf(findInput()).replace(/\n$/, ''));
-    if (tok > 0) { tokSpan.textContent = '~' + C.fmtN(tok) + ' tok'; tokWrap.classList.add('on'); }
+    if (tok > 0) { tokSpan.textContent = '~' + C.fmtN(tok) + ' tok'; tokWrap.classList.add('on'); showHint(HINTS.tok); }
     else tokWrap.classList.remove('on');
   }
 
@@ -1080,6 +1139,7 @@
     if (!document.body) { setTimeout(init, 50); return; }
     injectStyles(); createOverlay(); createFloat(); createResizeHandle();
     setupStorageListener(); setupMessageListener();
+    try { reduceMotion && reduceMotion.addEventListener('change', drawHalo); } catch (e) {}
     loadFloatSettings(); pullData(); draw();
     startRaf(); schedulePull();
     chatgptSelfReport();

@@ -35,7 +35,28 @@
   };
   // Settings that are stored once per provider. Claude keeps the legacy
   // un-suffixed keys so existing installs keep their customisation.
-  const PER_PROVIDER_KEYS = ['cum_halo_active', 'cum_halo_idle', 'cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos'];
+  const PER_PROVIDER_KEYS = ['cum_halo_active', 'cum_halo_idle', 'cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos',
+    'cum_breath_rate', 'cum_color_fade'];
+  // Motion defaults: breath rate is a multiplier on the halo's breathing speed;
+  // colour fade is how many seconds a colour change takes to blend in.
+  const MOTION_DEFAULTS = { breathRate: 1.0, colorFade: 1.4 };
+  // Style presets: every effect parameter is stored, not just a name.
+  // Applying one writes the current provider's keys; "Reset colors" undoes it.
+  const STYLE_PRESETS = {
+    neon:    { hi: '#00f0ff', mid: '#b04dff', lo: '#ff2e88', midPos: 0.4, haloActive: 1.0, haloIdle: 0.7,  breathRate: 1.4, colorFade: 0.6 },
+    cyber:   { hi: '#f9f002', mid: '#00e0ff', lo: '#ff003c', midPos: 0.5, haloActive: 1.0, haloIdle: 0.6,  breathRate: 1.8, colorFade: 0.3 },
+    natural: { hi: '#7bc47f', mid: '#d9b26f', lo: '#d9776a', midPos: 0.4, haloActive: 0.7, haloIdle: 0.35, breathRate: 0.7, colorFade: 2.4 },
+  };
+  // Map a preset onto storage keys for one provider
+  function presetToStorage(preset, provider) {
+    const k = (b) => settingKey(b, provider);
+    return {
+      [k('cum_color_hi')]: preset.hi, [k('cum_color_mid')]: preset.mid, [k('cum_color_lo')]: preset.lo,
+      [k('cum_color_mid_pos')]: preset.midPos,
+      [k('cum_halo_active')]: preset.haloActive, [k('cum_halo_idle')]: preset.haloIdle,
+      [k('cum_breath_rate')]: preset.breathRate, [k('cum_color_fade')]: preset.colorFade,
+    };
+  }
   function settingKey(base, provider) {
     return (!provider || provider === 'claude') ? base : base + '_' + provider;
   }
@@ -43,6 +64,22 @@
   // ── Providers ────────────────────────────────────────────────────────────
   const PROVIDERS = ['claude', 'chatgpt'];
   const PROVIDER_LABEL = { claude: 'Claude', chatgpt: 'ChatGPT' };
+  const MENU_THEMES = {
+    claude: { accent: '#d97757', rgb: '217,119,87', bg: '#1a1714', fg: '#f0ede8', menuBg: 'rgba(22,20,18,.96)' },
+    chatgpt: { accent: '#10a37f', rgb: '16,163,127', bg: '#171717', fg: '#f5f5f5', menuBg: 'rgba(20,20,20,.96)' },
+  };
+  function applyMenuTheme(el, provider) {
+    if (!el || !el.style) return;
+    const theme = MENU_THEMES[provider] || MENU_THEMES.claude;
+    el.style.setProperty('--cum-ui-accent', theme.accent);
+    el.style.setProperty('--cum-ui-accent-rgb', theme.rgb);
+    el.style.setProperty('--cum-ui-bg', theme.bg);
+    el.style.setProperty('--cum-ui-fg', theme.fg);
+    el.style.setProperty('--cum-ui-menu-bg', theme.menuBg);
+  }
+  function providerFromUrl(url) {
+    try { return detectProvider(new URL(url).hostname); } catch (e) { return null; }
+  }
   // storage key that holds the normalised usage snapshot for each provider.
   // 'claude' keeps the legacy key so existing installs upgrade in place.
   const USAGE_KEY = { claude: 'usageData', chatgpt: 'usageData_chatgpt' };
@@ -284,7 +321,8 @@
 
   root.CUM = {
     PETALS, CW, EMPTY_PETAL, DEFAULT_COLORS, PROVIDER_COLORS, PER_PROVIDER_KEYS, settingKey,
-    PROVIDERS, PROVIDER_LABEL, USAGE_KEY, detectProvider,
+    MOTION_DEFAULTS, STYLE_PRESETS, presetToStorage,
+    PROVIDERS, PROVIDER_LABEL, USAGE_KEY, detectProvider, providerFromUrl, MENU_THEMES, applyMenuTheme,
     LOCALE, localeOf, dirOf, guessLang, fontStack, applyLang,
     makeT, ICONS, escapeHtml,
     tierOf, usageColor,

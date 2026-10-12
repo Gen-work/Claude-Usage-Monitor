@@ -25,12 +25,24 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.storage.local.get(['cum_lang', 'cum_provider', 'cum_zen'], (res) => {
     if (res.cum_lang) lang = res.cum_lang;
     provider = C.USAGE_KEY[res.cum_provider] ? res.cum_provider : 'claude';
-    applyLang();
-    buildLangButtons();
-    buildProviderSeg();
-    loadUsage();
-    loadSettings();
-    if (res.cum_zen) applyZen(true);
+    const init = () => {
+      C.applyMenuTheme(document.documentElement, provider);
+      applyLang();
+      buildLangButtons();
+      buildProviderSeg();
+      loadUsage();
+      loadSettings();
+      if (res.cum_zen) applyZen(true);
+    };
+    // Prefer the current chat page; unrelated pages retain the saved choice.
+    try {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const error = chrome.runtime.lastError;
+        const current = !error && C.providerFromUrl(tabs && tabs[0] && tabs[0].url);
+        if (current) provider = current;
+        init();
+      });
+    } catch (e) { init(); }
   });
 
   // Live refresh while the popup is open
@@ -63,6 +75,19 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.set({ [K('cum_halo_idle')]: parseInt(e.target.value, 10) / 100 });
   });
 
+  $('breath-slider').addEventListener('input', (e) => {
+    const v = parseInt(e.target.value, 10) / 100;
+    $('breath-label').textContent = v.toFixed(1) + '×';
+    chrome.storage.local.set({ [K('cum_breath_rate')]: v }); checkColorsDirty();
+  });
+  $('fade-slider').addEventListener('input', (e) => {
+    const v = parseInt(e.target.value, 10) / 10;
+    $('fade-label').textContent = v.toFixed(1) + ' s';
+    chrome.storage.local.set({ [K('cum_color_fade')]: v }); checkColorsDirty();
+  });
+  $('tog-cd').addEventListener('change', (e) => chrome.storage.local.set({ cum_show_cd: e.target.checked }));
+  $('tog-tok').addEventListener('change', (e) => chrome.storage.local.set({ cum_show_tok: e.target.checked }));
+
   setupColorPicker();
   setupMidDrag();
   $('btn-reset-colors').addEventListener('click', resetColors);
@@ -73,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
       'cum_fenabled', 'cum_fopacity', 'cum_fwatermark', 'cum_fpos',
       'cum_halo_active', 'cum_halo_idle', 'cum_color_hi', 'cum_color_mid', 'cum_color_lo',
       'cum_fsize', 'cum_lang', 'cum_zen', 'cum_allpages', 'cum_color_mid_pos', 'cum_provider',
+      'cum_show_cd', 'cum_show_tok',
       ...ALL_PROVIDER_KEYS,
     ], () => location.reload());
   });
@@ -104,6 +130,7 @@ function applyLang() {
     el.textContent = t(el.getAttribute('data-i18n'));
   });
   updateHaloTitle();
+  if ($('preset-row').childElementCount) buildPresets();
 }
 
 function updateHaloTitle() {
@@ -142,6 +169,7 @@ function buildProviderSeg() {
     b.textContent = C.PROVIDER_LABEL[p];
     b.addEventListener('click', () => {
       provider = p;
+      C.applyMenuTheme(document.documentElement, provider);
       chrome.storage.local.set({ cum_provider: p });
       buildProviderSeg(); loadUsage(); loadSettings(); updateHaloTitle();
       try { chrome.runtime.sendMessage({ type: 'FORCE_FETCH', provider: p }, () => void chrome.runtime.lastError); } catch (e) {}
@@ -203,7 +231,7 @@ function showUsage(data) {
 
   const note = $('stale-note');
   note.style.display = data.stale ? 'block' : 'none';
-  note.textContent = data.stale ? '⚠ ' + t(provider === 'chatgpt' ? 'errorMsgChatgpt' : 'errorMsg') : '';
+  note.textContent = data.stale ? '⚠ ' + t('staleData') : '';
 
   const el = $('last-updated');
   el.setAttribute('data-dynamic', '1');
@@ -226,7 +254,7 @@ function showError(data) {
 
 function loadSettings() {
   chrome.storage.local.get(
-    ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_allpages', ...ALL_PROVIDER_KEYS],
+    ['cum_fenabled','cum_fopacity','cum_fwatermark','cum_allpages','cum_show_cd','cum_show_tok', ...ALL_PROVIDER_KEYS],
     (res) => {
       const enabled = !!res.cum_fenabled;
       const opacity = typeof res.cum_fopacity === 'number' ? res.cum_fopacity : 1.0;
@@ -235,6 +263,8 @@ function loadSettings() {
       $('tog-allpages').checked = !!res.cum_allpages;
       $('opacity-slider').value = Math.round(opacity * 100);
       $('opacity-label').textContent = Math.round(opacity * 100) + '%';
+      $('tog-cd').checked  = res.cum_show_cd  !== false;
+      $('tog-tok').checked = res.cum_show_tok !== false;
 
       const num = (k, d) => typeof res[K(k)] === 'number' ? res[K(k)] : d;
       const haloActive = num('cum_halo_active', 1.0);
@@ -243,6 +273,10 @@ function loadSettings() {
       $('halo-active-label').textContent = Math.round(haloActive * 100) + '%';
       $('halo-idle-slider').value = Math.round(haloIdle * 100);
       $('halo-idle-label').textContent = Math.round(haloIdle * 100) + '%';
+      motion.breathRate = num('cum_breath_rate', C.MOTION_DEFAULTS.breathRate);
+      motion.colorFade  = num('cum_color_fade',  C.MOTION_DEFAULTS.colorFade);
+      motion.haloActive = haloActive; motion.haloIdle = haloIdle;
+      showMotion();
 
       const P = PC();
       Col.hi  = res[K('cum_color_hi')]  || P.hi;
@@ -254,7 +288,8 @@ function loadSettings() {
       $('color-lo').value = Col.lo;
       $('color-mid-picker').value = Col.mid;
 
-      updateGradientBar(); checkColorsDirty(); setFloatControlsEnabled(enabled);
+      updateGradientBar(); checkColorsDirty(); setFloatControlsEnabled(enabled); buildPresets();
+      loadUsage(); // bars were drawn before this provider's colours were known
     }
   );
 }
@@ -269,9 +304,46 @@ function updateGradientBar() {
   $('gmid-handle').style.left = p + '%';
 }
 
+// Halo intensity + motion values currently shown (per provider)
+const motion = { haloActive: 1.0, haloIdle: 0.5, breathRate: 1.0, colorFade: 1.4 };
+function showMotion() {
+  $('breath-slider').value = Math.round(motion.breathRate * 100);
+  $('breath-label').textContent = motion.breathRate.toFixed(1) + '×';
+  $('fade-slider').value = Math.round(motion.colorFade * 10);
+  $('fade-label').textContent = motion.colorFade.toFixed(1) + ' s';
+}
+
+// Style presets: hover previews the colours on the gradient bar, click applies every parameter
+function buildPresets() {
+  const row = $('preset-row');
+  row.innerHTML = '';
+  const names = { neon: 'presetNeon', cyber: 'presetCyber', natural: 'presetNatural' };
+  for (const [id, p] of Object.entries(C.STYLE_PRESETS)) {
+    const b = document.createElement('button');
+    b.className = 'preset-btn';
+    b.dataset.preset = id;
+    const sw = document.createElement('span'); sw.className = 'preset-swatch';
+    sw.style.background = `linear-gradient(to right, ${p.hi}, ${p.mid} ${p.midPos * 100}%, ${p.lo})`;
+    b.appendChild(sw); b.appendChild(document.createTextNode(t(names[id])));
+    b.classList.toggle('active', Col.hi === p.hi && Col.mid === p.mid && Col.lo === p.lo);
+    b.addEventListener('mouseenter', () => {
+      $('gradient-bar').style.background = `linear-gradient(to right, ${p.hi}, ${p.mid} ${p.midPos * 100}%, ${p.lo})`;
+    });
+    b.addEventListener('mouseleave', updateGradientBar);
+    b.addEventListener('click', () => {
+      chrome.storage.local.set(C.presetToStorage(p, provider), loadSettings);
+    });
+    row.appendChild(b);
+  }
+}
+
 function checkColorsDirty() {
   const P = PC();
-  const dirty = Col.hi !== P.hi || Col.mid !== P.mid || Col.lo !== P.lo || Math.abs(colorMidPos - P.midPos) > 0.01;
+  const M = C.MOTION_DEFAULTS;
+  const breath = parseInt($('breath-slider').value, 10) / 100;
+  const fade = parseInt($('fade-slider').value, 10) / 10;
+  const dirty = Col.hi !== P.hi || Col.mid !== P.mid || Col.lo !== P.lo || Math.abs(colorMidPos - P.midPos) > 0.01
+    || Math.abs(breath - M.breathRate) > 0.01 || Math.abs(fade - M.colorFade) > 0.01;
   $('btn-reset-colors').style.display = dirty ? '' : 'none';
 }
 
@@ -328,7 +400,8 @@ function resetColors() {
   const P = PC();
   Col.hi = P.hi; Col.mid = P.mid; Col.lo = P.lo; colorMidPos = P.midPos;
   $('color-hi').value = Col.hi; $('color-lo').value = Col.lo; $('color-mid-picker').value = Col.mid;
-  chrome.storage.local.remove(['cum_color_hi', 'cum_color_mid', 'cum_color_lo', 'cum_color_mid_pos'].map(K));
+  // Undo a preset as well: colours, glow intensity and motion all go back to defaults
+  chrome.storage.local.remove(C.PER_PROVIDER_KEYS.map(K), loadSettings);
   updateGradientBar(); checkColorsDirty();
 }
 
