@@ -1,0 +1,31 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches: ["**"]
+  delete:
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitLab
+        run: |
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/Tokumei_M/Claude-Usage-Monitor.git
+          # Mirror the remote-tracking refs: on a branch push the checkout only
+          # creates that one local branch, so pushing refs/heads/* with --prune
+          # asked GitLab to delete every other branch (incl. the protected
+          # default) and the whole push was rejected.
+          git remote set-head origin --delete || true
+          # Branches are mirrored with --prune (a branch deleted on GitHub
+          # disappears on GitLab). Tags are NOT pruned: the office PC pushes
+          # to GitLab only, and a tag that exists solely there (the P0-01
+          # freeze tag was created that way, since the cloud session cannot
+          # push tags to GitHub) must survive the next mirror run.
+          git push --force --prune gitlab +refs/remotes/origin/*:refs/heads/*
+          git push --force gitlab +refs/tags/*:refs/tags/*
