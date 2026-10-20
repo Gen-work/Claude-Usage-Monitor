@@ -16,7 +16,7 @@ jobs:
 
       - name: Push to GitLab
         run: |
-          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/Tokumei_M/Claude-Usage-Monitor.git
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB2 }}@gitlab.com/Tokumei_M/Claude-Usage-Monitor.git
           # Mirror the remote-tracking refs: on a branch push the checkout only
           # creates that one local branch, so pushing refs/heads/* with --prune
           # asked GitLab to delete every other branch (incl. the protected
